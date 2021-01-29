@@ -81,10 +81,10 @@ import java.util.Iterator;
 public class NormStatementWithResult<P extends Parameters, R extends Result> {
 
     private String safeSQL;
+    private Object statementOuter;
 
     private Class<R> resultClass;
     private Constructor<?> resultCtor;
-    private Object resultOuter;
 
     private Class<P> paramsClass;
     private Constructor<?> paramsCtor;
@@ -109,7 +109,7 @@ public class NormStatementWithResult<P extends Parameters, R extends Result> {
         try {
             Field outerThis = getClass().getDeclaredField("this$0");
             outerThis.setAccessible(true);
-            resultOuter = outerThis.get(this);
+            statementOuter = outerThis.get(this);
         } catch (IllegalAccessException | IllegalArgumentException | NoSuchFieldException | SecurityException ex) {
             // Best effort
         }
@@ -117,7 +117,7 @@ public class NormStatementWithResult<P extends Parameters, R extends Result> {
         paramsClass = (Class<P>) types[0];
 
         paramsCtor = Arrays.asList(paramsClass.getDeclaredConstructors()).stream()
-                .filter(ctor -> ctor.getParameterCount() == 0 || (ctor.getParameterCount() == 1 && ctor.getParameterTypes()[0].isInstance(resultOuter)))
+                .filter(ctor -> ctor.getParameterCount() == 0 || (ctor.getParameterCount() == 1 && ctor.getParameterTypes()[0].isInstance(statementOuter)))
                 .findFirst()
                 .get();
 
@@ -129,7 +129,7 @@ public class NormStatementWithResult<P extends Parameters, R extends Result> {
 
         resultCtor
                 = Arrays.asList(resultClass.getDeclaredConstructors()).stream()
-                        .filter(ctor -> ctor.getParameterCount() == 0 || (ctor.getParameterCount() == 1 && ctor.getParameterTypes()[0].isInstance(resultOuter)))
+                        .filter(ctor -> ctor.getParameterCount() == 0 || (ctor.getParameterCount() == 1 && ctor.getParameterTypes()[0].isInstance(statementOuter)))
                         .findFirst()
                         .get();
 
@@ -147,7 +147,7 @@ public class NormStatementWithResult<P extends Parameters, R extends Result> {
     private R constructResult() {
         try {
             if (resultCtor.getParameterCount() == 1) {
-                return (R) resultCtor.newInstance(resultOuter);
+                return (R) resultCtor.newInstance(statementOuter);
             } else {
                 return (R) resultCtor.newInstance();
             }
@@ -166,7 +166,7 @@ public class NormStatementWithResult<P extends Parameters, R extends Result> {
 
         try {
             if (paramsCtor.getParameterCount() == 1) {
-                params = (P) paramsCtor.newInstance(resultOuter);
+                params = (P) paramsCtor.newInstance(statementOuter);
             } else {
                 params = (P) paramsCtor.newInstance();
             }

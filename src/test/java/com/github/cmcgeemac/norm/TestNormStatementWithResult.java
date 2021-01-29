@@ -10,7 +10,7 @@ import org.junit.Assert;
 import org.junit.Test;
 
 
-public class TestClass {
+public class TestNormStatementWithResult {
 
     @Test
     public void testInlineConstruction() throws Exception {
@@ -89,25 +89,25 @@ public class TestClass {
         Assert.assertNotNull(foo);
     }
 
-    private static class ClaimIdParameters implements Parameters {
+    private static class QueryParameters implements Parameters {
 
         int baz;
     }
 
-    private static class ClaimIdResult implements Result {
+    private static class QueryResult implements Result {
 
         int foo;
     }
 
-    private static final NormStatementWithResult<ClaimIdParameters, ClaimIdResult> claimIdStatement = new @SQL(
+    private static final NormStatementWithResult<QueryParameters, QueryResult> QUERY = new @SQL(
             "SELECT foo "
             + "FROM bar "
-            + "WHERE bar.baz = :baz;") NormStatementWithResult<ClaimIdParameters, ClaimIdResult>() {
+            + "WHERE bar.baz = :baz;") NormStatementWithResult<QueryParameters, QueryResult>() {
     };
 
     @Test
     public void testReusableStatement() throws Exception {
-        try (CloseableIterable<ClaimIdResult> rs = claimIdStatement.execute(null)) {
+        try ( CloseableIterable<QueryResult> rs = QUERY.execute(null)) {
             rs.forEach(r -> System.out.println(r.foo));
         }
     }
