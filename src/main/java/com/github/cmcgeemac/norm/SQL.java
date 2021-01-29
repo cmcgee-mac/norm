@@ -11,12 +11,12 @@ import java.lang.annotation.RetentionPolicy;
 import java.lang.annotation.Target;
 
 /**
- *
- * @author cmcgee
+ * Use the SQL annotation to provide the SQL statement statically to a NORM
+ * statement object.
  */
 @Retention(value = RetentionPolicy.RUNTIME)
 @Target(value = ElementType.TYPE_USE)
- @interface SQL {
+public @interface SQL {
 
     String value();
 

@@ -6,7 +6,7 @@
 package com.github.cmcgeemac.norm;
 
 /**
- *
- * @author cmcgee
+ * Marker interface for classes that define the result structure of a statement.
  */
-interface Result {}
+public interface Result {
+}

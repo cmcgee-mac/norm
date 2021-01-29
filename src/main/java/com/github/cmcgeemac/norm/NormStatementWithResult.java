@@ -26,6 +26,8 @@ import java.util.Iterator;
  *
  * <p>
  * Here is a simple example that can be used directly in a method.
+ * </p>
+ *
  * <pre>
  * class p implements Parameters {
  *   int baz = matchBaz;
@@ -42,10 +44,11 @@ import java.util.Iterator;
  *   }
  * }
  * </pre>
- * </p>
  *
  * <p>
  * The statement can be shared among different methods.
+ * </p>
+ *
  * <pre>
  * public class Outer {
  *   static class ReqParams implements Parameters {
@@ -74,9 +77,8 @@ import java.util.Iterator;
  *   }
  * }
  * </pre>
- * </p>
  */
-class NormStatementWithResult<P extends Parameters, R extends Result> {
+public class NormStatementWithResult<P extends Parameters, R extends Result> {
 
     private String safeSQL;
 

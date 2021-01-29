@@ -6,7 +6,7 @@
 package com.github.cmcgeemac.norm;
 
 /**
- *
- * @author cmcgee
+ * Marker interface for a class the defines the parameters of a NORM statement.
  */
-interface Parameters {}
+public interface Parameters {
+}
