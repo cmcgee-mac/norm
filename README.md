@@ -1,7 +1,7 @@
 No ORM
 ======
 
-![Java CI with Maven](https://github.com/cmcgee/norm/workflows/Java%20CI%20with%20Maven/badge.svg)
+![Java CI with Maven](https://github.com/cmcgee-mac/norm/workflows/Java%20CI%20with%20Maven/badge.svg)
 
 The No ORM (NORM) package is a set of Java utilities built on top of JDBC
 to better integrate SQL queries into your Java code in a safer and type safe
