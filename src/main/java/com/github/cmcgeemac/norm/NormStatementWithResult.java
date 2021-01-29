@@ -81,12 +81,13 @@ class NormStatementWithResult<P extends Parameters, R extends Result> {
     private String safeSQL;
 
     private Class<R> resultClass;
-    private Constructor resultCtor;
+    private Constructor<?> resultCtor;
     private Object resultOuter;
 
     private Class<P> paramsClass;
-    private Constructor paramsCtor;
+    private Constructor<?> paramsCtor;
 
+    @SuppressWarnings("unchecked")
     public NormStatementWithResult() {
         Class<?> c = getClass();
         AnnotatedType type = c.getAnnotatedSuperclass();
@@ -140,6 +141,7 @@ class NormStatementWithResult<P extends Parameters, R extends Result> {
         // TODO validate that the parameter fields match what is in the statement using reflection
     }
 
+    @SuppressWarnings("unchecked")
     private R constructResult() {
         try {
             if (resultCtor.getParameterCount() == 1) {
@@ -152,6 +154,7 @@ class NormStatementWithResult<P extends Parameters, R extends Result> {
         }
     }
 
+    @SuppressWarnings("unchecked")
     public CloseableIterable<R> execute(Connection c) throws SQLException {
         if (paramsCtor == null) {
             throw new IllegalArgumentException("No default constructor found for parameters object. You must create a default constructor or provide a parameters object to the execute method.");
