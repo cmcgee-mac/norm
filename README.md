@@ -1,6 +1,8 @@
 No ORM
 ======
 
+![Java CI with Maven](https://github.com/cmcgee/norm/workflows/Java%20CI%20with%20Maven/badge.svg)
+
 The No ORM (NORM) package is a set of Java utilities built on top of JDBC
 to better integrate SQL queries into your Java code in a safer and type safe
 manner, without re-describing SQL table structures in Java. Instead, the idea
@@ -16,7 +18,7 @@ Guiding principles:
 Here is a light-weight example of a private query that you can put directly into
 a method.
 
-```
+```java
     public void performQuery(int baz) throws Exception {
         class p implements Parameters {
             int baz = baz;
@@ -60,7 +62,7 @@ that depends on a particular column or type in the output.
 For re-usable queries you can put them statically into a class as in the following
 example.
 
-```
+```java
 public class Outer {
   static class ReqParams implements Parameters {
     int baz;
@@ -104,7 +106,7 @@ constructs so that you could use forEach() with a lambda function or even conver
 it to a Java Stream. Be sure to close the Iterable when you are finished
 with it, or encapsulate it in a try-with-resources block.
 
-```
+```java
 rs.forEach( r -> System.out.println(r.foo) );
 
 Integer foo = StreamSupport.stream(rs
