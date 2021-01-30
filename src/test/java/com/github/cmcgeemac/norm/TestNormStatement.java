@@ -17,7 +17,7 @@ public class TestNormStatement {
             int newBaz = 100;
         }
 
-        if (new @SQL("UPDATE foo SET bar = :newBar WHERE foo.bar = :bar;") NormStatement<p>() {
+        if (new @SQL("UPDATE foo SET baz = :newBaz WHERE foo.bar = :bar;") NormStatement<p>() {
         }.executeUpdate(null) != 1) {
             System.out.println("Incorrect number of rows updated. Please try again.");
         }
@@ -26,13 +26,13 @@ public class TestNormStatement {
     @Test
     public void testInlineConstructionWithMultiLineStatement() throws Exception {
         class p implements Parameters {
-
-            int baz;
+            int newBaz;
+            int bar;
         }
 
         if (new @SQL(""
                 + "UPDATE foo "
-                + "SET bar = :newBar "
+                + "SET baz = :newBaz "
                 + "WHERE foo.bar = :bar;") NormStatement<p>() {
         }.executeUpdate(null) != 1) {
             System.out.println("Incorrect number of rows updated. Please try again.");

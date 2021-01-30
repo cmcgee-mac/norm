@@ -13,7 +13,11 @@ import java.lang.reflect.ParameterizedType;
 import java.lang.reflect.Type;
 import java.sql.Connection;
 import java.sql.SQLException;
+import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.List;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 /**
  * No ORM SQL statement represents a Java typed SQL statement with parameters
@@ -21,14 +25,20 @@ import java.util.Arrays;
  * {@link NormStatementWithResult}. Typically these statements are used for
  * updates to the database where the caller only needs to be aware if the
  * execution succeeded, and perhaps the number of affected rows.
+ *
+ * @param <P> The parameters class with the variables for this statement.
  */
 public class NormStatement<P extends Parameters> {
 
-    private String safeSQL;
+    private static Pattern VARIABLE_PATTERN = Pattern.compile(":([a-zA-z][a-zA-z0-9]*)");
+
+    String safeSQL; // Package access for testing
     private Object statementOuter;
 
     private Class<P> paramsClass;
     private Constructor<?> paramsCtor;
+
+    private List<Field> slots = new ArrayList<Field>();
 
     @SuppressWarnings("unchecked")
     public NormStatement() {
@@ -71,7 +81,21 @@ public class NormStatement<P extends Parameters> {
             paramsCtor.setAccessible(true);
         }
 
-        // TODO validate that the parameter fields match what is in the statement using reflection
+        Matcher m = VARIABLE_PATTERN.matcher(safeSQL);
+        while (m.find()) {
+            String var = m.group(1);
+            try {
+                slots.add(paramsClass.getDeclaredField(var));
+            } catch (NoSuchFieldException ex) {
+                throw new IllegalArgumentException("Parameter class "
+                        + paramsClass.getTypeName() + " does not have a field "
+                        + var + " found in the SQL statement.");
+            } catch (SecurityException e) {
+                throw new IllegalStateException(e.getMessage(), e);
+            }
+
+            safeSQL = safeSQL.replaceFirst(":" + var, "?");
+        }
     }
 
     @SuppressWarnings("unchecked")
