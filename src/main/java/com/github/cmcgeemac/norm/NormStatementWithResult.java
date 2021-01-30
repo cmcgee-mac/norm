@@ -64,9 +64,12 @@ import java.util.Iterator;
  *     int foo;
  *   }
  *
- *   static NormStatementWithResults&lt;ReqParams,ReqResult&gt; REQUEST =
- *     new @SQL(&quot;SELECT foo FROM bar WHERE bar.baz = :baz;&quot;)
- *     NormStatementWithResults&lt;ReqParams,ReqResult&gt;() {}
+ *   @SQL(&quot;SELECT foo FROM bar WHERE bar.baz = :baz;&quot;)
+ *   static class Req extends NormStatementWithResults&lt;ReqParams,ReqResult&gt; {
+ *   }
+ *
+ *   // Let's avoid repeated construction costs
+ *   static final Req REQUEST = new Req();
  *
  *   public void performQuery() throws Exception {
  *     try (CloseableIterable&lt;ReqRsult&gt; rs = REQUEST.execute(dbConn, new ReqParams().setBaz(100)) {
@@ -92,8 +95,13 @@ public class NormStatementWithResult<P extends Parameters, R extends Result> {
     @SuppressWarnings("unchecked")
     public NormStatementWithResult() {
         Class<?> c = getClass();
-        AnnotatedType type = c.getAnnotatedSuperclass();
-        SQL[] sql = type.getAnnotationsByType(SQL.class);
+        SQL[] sql = c.getAnnotationsByType(SQL.class);
+
+        // The SQL annotation can either be on the subclass or the parent class
+        if (sql == null || sql.length == 0) {
+            AnnotatedType type = c.getAnnotatedSuperclass();
+            sql = type.getAnnotationsByType(SQL.class);
+        }
 
         if (sql == null || sql.length != 1) {
             throw new IllegalArgumentException("All NormStatements must have a single SQL annotation with the SQL statement.");

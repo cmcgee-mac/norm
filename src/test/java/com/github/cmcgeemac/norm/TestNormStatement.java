@@ -45,15 +45,18 @@ public class TestNormStatement {
         int baz;
     }
 
-    private static final NormStatement<UpdateStatementParameters> UPDATE_STATEMENT = new @SQL(
+    @SQL(
             "SELECT foo "
             + "FROM bar "
-            + "WHERE bar.baz = :baz;") NormStatement<UpdateStatementParameters>() {
-    };
+            + "WHERE bar.baz = :baz;")
+    private static class UpdateStatement extends NormStatement<UpdateStatementParameters> {
+    }
+
+    // Let's save some construction costs each time this is run
+    private static UpdateStatement UPDATE_STATEMENT = new UpdateStatement();
 
     @Test
     public void testReusableStatement() throws Exception {
         UPDATE_STATEMENT.executeUpdate(null);
     }
-
 }

@@ -99,11 +99,15 @@ public class TestNormStatementWithResult {
         int foo;
     }
 
-    private static final NormStatementWithResult<QueryParameters, QueryResult> QUERY = new @SQL(
+    @SQL(
             "SELECT foo "
             + "FROM bar "
-            + "WHERE bar.baz = :baz;") NormStatementWithResult<QueryParameters, QueryResult>() {
-    };
+            + "WHERE bar.baz = :baz;")
+    private static class Query extends NormStatementWithResult<QueryParameters, QueryResult> {
+    }
+
+    // Save construction costs each time this is run
+    private static final Query QUERY = new Query();
 
     @Test
     public void testReusableStatement() throws Exception {

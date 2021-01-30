@@ -33,8 +33,13 @@ public class NormStatement<P extends Parameters> {
     @SuppressWarnings("unchecked")
     public NormStatement() {
         Class<?> c = getClass();
-        AnnotatedType type = c.getAnnotatedSuperclass();
-        SQL[] sql = type.getAnnotationsByType(SQL.class);
+        SQL[] sql = c.getAnnotationsByType(SQL.class);
+
+        // The SQL annotation can either be on the subclass or the parent class
+        if (sql == null || sql.length == 0) {
+            AnnotatedType type = c.getAnnotatedSuperclass();
+            sql = type.getAnnotationsByType(SQL.class);
+        }
 
         if (sql == null || sql.length != 1) {
             throw new IllegalArgumentException("All NormStatements must have a single SQL annotation with the SQL statement.");

@@ -59,31 +59,34 @@ reflective interfaces. This tends to produce less verbose and more readable code
 Also, if you change the query and results then it's much easier to refactor code
 that depends on a particular column or type in the output.
 
-For re-usable queries you can put them statically into a class as in the following
-example.
+For re-usable and more complex queries you can put them statically into a class
+ as in the following example.
 
 ```java
 public class Outer {
-  static class ReqParams implements Parameters {
+  static class StatementParams implements Parameters {
     int baz;
 
-    public ReqParams setBaz(int newBaz) {
+    public StatementParams setBaz(int newBaz) {
       baz = newBaz;
       return this;
     }
   }
 
-  static class ReqResult implements Result {
+  static class StatementResult implements Result {
     int foo;
   }
 
-  static NormStatementWithResults<ReqParams,ReqResult> REQUEST =
-    new @SQL("SELECT foo FROM bar WHERE bar.baz = :baz;")
-    NormStatementWithResults<ReqParams,ReqResult>() {}
+  @SQL("SELECT foo FROM bar WHERE bar.baz = :baz;")
+  static class Statement extends NormStatementWithResults<StatementParams,StatementResult> {
+  }
+
+  // Let's save some of the costs of construction each time the statement is executed
+  static final Statement STATEMENT = new Statement();
 
   public void performQuery() throws Exception {
-    try (CloseableIterable<ReqRsult> rs = REQUEST.execute(dbConn, new ReqParams().setBaz(100)) {
-      for (ReqResult r: rs) {
+    try (CloseableIterable<StatementResult> rs = STATEMENT.execute(dbConn, new ReqParams().setBaz(100)) {
+      for (StatementResult r: rs) {
         System.out.println(r.foo);
       }
     }
@@ -91,9 +94,8 @@ public class Outer {
 }
 ```
 
-In this case fields in the parameters class that do not exist as variables in the
-SQL statement or vice-versa will fail as soon as the class is loaded, which is
-often much sooner than when the first time a query is executed.
+If you have a variable in your SQL that doesn't match the parameters then you will
+get a compile error, which makes this approach a little safer and also more testable.
 
 It is also possible to create public classes for the NORM statements, parameters
 and results, but this is not recommended since it promotes the use of more
