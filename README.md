@@ -44,6 +44,21 @@ for SQL injection. This one of the built-in safety mechanisms. Substitution is
 done only after the statement has been prepared by the database using named
 tokens (e.g. ":baz") that match fields in the parameters class.
 
+The statement's execute() method returns an Iterable so that a variety of Java
+constructs so that you could use forEach() with a lambda function or even convert
+it to a Java Stream. Be sure to close the Iterable when you are finished
+with it, or encapsulate it in a try-with-resources block.
+
+```java
+rs.forEach( r -> System.out.println(r.foo) );
+
+Integer foo = StreamSupport.stream(rs
+        .spliterator(), false)
+        .map(r-> r.foo)
+        .findFirst()
+        .get();
+```
+
 At execution time the SQL variables are set using the parameters object. The default
 constructor above will set the value to the input of the performQuery() method.
 Substitution is done using the name of the field and its declared Java type.
@@ -58,6 +73,8 @@ be more easily encapsulated as Java objects without the necessity for JDBC's
 reflective interfaces. This tends to produce less verbose and more readable code.
 Also, if you change the query and results then it's much easier to refactor code
 that depends on a particular column or type in the output.
+
+## Complex Statements
 
 Inline statements like the one above are best used for simple queries that can
 be more easily verified by code inspection and are unlikely to change very often.
@@ -102,23 +119,15 @@ variables in your SQL that don't match a field in the parameters class then you
 get a compile error. There are other compile time checks available here too.
 This is the recommended approach for more complex and dynamic statements.
 
+Also, since the statement is static and has package visibility it can be used
+in an automated test environment with a database connection to drive different
+test cases for the SQL query directly.
+
+## The ORM Trap
+
 It is also possible to create public classes for the NORM statements, parameters
 and results, but this is not recommended since it promotes the use of more
 generalized SQL statements instead of case-specific ones that can be customized
 easily without large refactoring operations on your code base. We try to tap into
 the power of SQL directly for each situation.
 
-The statement's execute() method returns an Iterable so that a variety of Java
-constructs so that you could use forEach() with a lambda function or even convert
-it to a Java Stream. Be sure to close the Iterable when you are finished
-with it, or encapsulate it in a try-with-resources block.
-
-```java
-rs.forEach( r -> System.out.println(r.foo) );
-
-Integer foo = StreamSupport.stream(rs
-        .spliterator(), false)
-        .map(r-> r.foo)
-        .findFirst()
-        .get();
-```
