@@ -182,8 +182,6 @@ public class NormStatementWithResult<P extends Parameters, R extends Result> ext
 
                             throw new IllegalStateException(ex.getMessage(), ex);
                         }
-
-                        return false;
                     }
 
                     @Override
