@@ -5,26 +5,40 @@
  */
 package com.github.cmcgeemac.norm;
 
+import java.sql.Connection;
+import java.sql.PreparedStatement;
+import org.junit.Assert;
 import org.junit.Test;
+import org.mockito.Mockito;
 
 
 public class TestNormStatement {
 
     @Test
     public void testInlineConstruction() throws Exception {
+        Connection c = Mockito.mock(Connection.class);
+        PreparedStatement pstmt = Mockito.mock(PreparedStatement.class);
+        Mockito.when(c.prepareStatement(Mockito.any())).thenReturn(pstmt);
+        Mockito.when(pstmt.executeUpdate()).thenReturn(1);
+
         class p implements Parameters {
             int bar = 1;
             int newBaz = 100;
         }
 
         if (new @SQL("UPDATE foo SET baz = :newBaz WHERE foo.bar = :bar;") NormStatement<p>() {
-        }.executeUpdate(null) != 1) {
-            System.out.println("Incorrect number of rows updated. Please try again.");
+        }.executeUpdate(c) != 1) {
+            Assert.fail("Incorrect number of rows updated. Please try again.");
         }
     }
 
     @Test
     public void testInlineConstructionWithMultiLineStatement() throws Exception {
+        Connection c = Mockito.mock(Connection.class);
+        PreparedStatement pstmt = Mockito.mock(PreparedStatement.class);
+        Mockito.when(c.prepareStatement(Mockito.any())).thenReturn(pstmt);
+        Mockito.when(pstmt.executeUpdate()).thenReturn(1);
+
         class p implements Parameters {
             int newBaz;
             int bar;
@@ -34,8 +48,8 @@ public class TestNormStatement {
                 + "UPDATE foo "
                 + "SET baz = :newBaz "
                 + "WHERE foo.bar = :bar;") NormStatement<p>() {
-        }.executeUpdate(null) != 1) {
-            System.out.println("Incorrect number of rows updated. Please try again.");
+        }.executeUpdate(c) != 1) {
+            Assert.fail("Incorrect number of rows updated. Please try again.");
         }
 
     }
@@ -57,6 +71,11 @@ public class TestNormStatement {
 
     @Test
     public void testReusableStatement() throws Exception {
-        UPDATE_STATEMENT.executeUpdate(null);
+        Connection c = Mockito.mock(Connection.class);
+        PreparedStatement pstmt = Mockito.mock(PreparedStatement.class);
+        Mockito.when(c.prepareStatement(Mockito.any())).thenReturn(pstmt);
+        Mockito.when(pstmt.executeUpdate()).thenReturn(1);
+
+        Assert.assertEquals(1, UPDATE_STATEMENT.executeUpdate(c));
     }
 }

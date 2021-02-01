@@ -44,7 +44,7 @@ public class SQLStatementProcessor extends AbstractProcessor {
                     DeclaredType declSuperType = (DeclaredType) superType;
                     Element declSuperTypeElem = declSuperType.asElement();
                     if (!declSuperTypeElem.getSimpleName().contentEquals("NormStatement")
-                            && !declSuperTypeElem.getSimpleName().contentEquals("NormStatementWithResults")) {
+                            && !declSuperTypeElem.getSimpleName().contentEquals("NormStatementWithResult")) {
 
                         messager.printMessage(Diagnostic.Kind.ERROR,
                                 "@SQL annotation only applies to NORM statement subclasses: " + declSuperTypeElem.getSimpleName(),
@@ -73,6 +73,8 @@ public class SQLStatementProcessor extends AbstractProcessor {
                                 }
                             }
                         }
+
+                        break;
                     }
                 }
             }

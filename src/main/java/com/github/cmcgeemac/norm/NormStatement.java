@@ -11,8 +11,16 @@ import java.lang.reflect.Field;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.ParameterizedType;
 import java.lang.reflect.Type;
+import java.math.BigDecimal;
+import java.net.URL;
+import java.sql.Array;
 import java.sql.Connection;
+import java.sql.Date;
+import java.sql.PreparedStatement;
 import java.sql.SQLException;
+import java.sql.Time;
+import java.sql.Timestamp;
+import java.sql.Types;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
@@ -85,7 +93,14 @@ public class NormStatement<P extends Parameters> {
         while (m.find()) {
             String var = m.group(1);
             try {
-                slots.add(paramsClass.getDeclaredField(var));
+                Field f = paramsClass.getDeclaredField(var);
+                if (f.getType().isArray()) {
+                    com.github.cmcgeemac.norm.Type[] t = f.getAnnotationsByType(com.github.cmcgeemac.norm.Type.class);
+                    if (t == null || t.length != 1) {
+                        throw new IllegalArgumentException("Parameters class field " + f.getName() + " is an array and must have a @Type annotation to set the database type of the ARRAY");
+                    }
+                }
+                slots.add(f);
             } catch (NoSuchFieldException ex) {
                 throw new IllegalArgumentException("Parameter class "
                         + paramsClass.getTypeName() + " does not have a field "
@@ -120,6 +135,54 @@ public class NormStatement<P extends Parameters> {
     }
 
     public int executeUpdate(Connection c, P p) throws SQLException {
-        return 0;
+        PreparedStatement pstmt = c.prepareStatement(safeSQL);
+
+        int idx = 1;
+        for (Field f : slots) {
+            // Ensure accessibility
+            f.setAccessible(true);
+
+            try {
+                Object v = f.get(p);
+
+                // TODO blob, clob
+                if (v == null) {
+                    pstmt.setNull(idx++, Types.NULL);
+                } else if (v instanceof Integer) {
+                    pstmt.setInt(idx++, (Integer) v);
+                } else if (v instanceof Date) {
+                    pstmt.setDate(idx++, (Date) v);
+                } else if (v instanceof BigDecimal) {
+                    pstmt.setBigDecimal(idx++, (BigDecimal) v);
+                } else if (v instanceof Float) {
+                    pstmt.setFloat(idx++, (Float) v);
+                } else if (v instanceof Double) {
+                    pstmt.setDouble(idx++, (Double) v);
+                } else if (v instanceof Short) {
+                    pstmt.setShort(idx++, (Short) v);
+                } else if (v instanceof String) {
+                    pstmt.setString(idx++, (String) v);
+                } else if (v instanceof Time) {
+                    pstmt.setTime(idx++, (Time) v);
+                } else if (v instanceof Timestamp) {
+                    pstmt.setTimestamp(idx++, (Timestamp) v);
+                } else if (v instanceof URL) {
+                    pstmt.setURL(idx++, (URL) v);
+                } else if (v instanceof Array) {
+                    pstmt.setArray(idx++, (Array) v);
+                } else if (v instanceof Boolean) {
+                    pstmt.setBoolean(idx++, (Boolean) v);
+                } else if (v.getClass().isArray()) {
+                    com.github.cmcgeemac.norm.Type[] t = f.getAnnotationsByType(com.github.cmcgeemac.norm.Type.class);
+                    pstmt.setArray(idx++, c.createArrayOf(t[0].value(), (Object[]) v));
+                } else {
+                    pstmt.setObject(idx++, v);
+                }
+            } catch (IllegalArgumentException | IllegalAccessException ex) {
+                throw new SQLException(ex.getMessage(), ex);
+            }
+        }
+
+        return pstmt.executeUpdate();
     }
 }

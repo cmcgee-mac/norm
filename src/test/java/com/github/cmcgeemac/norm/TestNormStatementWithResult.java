@@ -5,15 +5,28 @@
  */
 package com.github.cmcgeemac.norm;
 
+import java.sql.Connection;
+import java.sql.PreparedStatement;
+import java.sql.ResultSet;
 import java.util.stream.StreamSupport;
 import org.junit.Assert;
 import org.junit.Test;
+import org.mockito.Mockito;
 
 
 public class TestNormStatementWithResult {
 
     @Test
     public void testInlineConstruction() throws Exception {
+        Connection c = Mockito.mock(Connection.class);
+        PreparedStatement pstmt = Mockito.mock(PreparedStatement.class);
+        Mockito.when(c.prepareStatement(Mockito.any())).thenReturn(pstmt);
+        ResultSet resultSet = Mockito.mock(ResultSet.class);
+        Mockito.when(pstmt.executeQuery()).thenReturn(resultSet);
+        Mockito.when(resultSet.next()).thenReturn(true).thenReturn(false);
+        Mockito.when(resultSet.getInt(Mockito.any())).thenReturn(1);
+
+
         class p implements Parameters {
 
             int baz = 100;
@@ -28,19 +41,28 @@ public class TestNormStatementWithResult {
         = new @SQL("SELECT foo "
                 + "FROM bar WHERE "
                 + "bar.baz = :baz;") NormStatementWithResult<p, r>() {
-                }.execute(null)) {
+                }.execute(c)) {
             for (r r : rs) {
-                System.out.println(r.foo);
+                Assert.assertEquals(1, r.foo);
             }
         }
 
+        Mockito.verify(pstmt).setInt(1, 100);
     }
 
     @Test
     public void testInlineConstructionWithMultiLineStatement() throws Exception {
+        Connection c = Mockito.mock(Connection.class);
+        PreparedStatement pstmt = Mockito.mock(PreparedStatement.class);
+        Mockito.when(c.prepareStatement(Mockito.any())).thenReturn(pstmt);
+        ResultSet resultSet = Mockito.mock(ResultSet.class);
+        Mockito.when(pstmt.executeQuery()).thenReturn(resultSet);
+        Mockito.when(resultSet.next()).thenReturn(true).thenReturn(false);
+        Mockito.when(resultSet.getInt(Mockito.anyString())).thenReturn(1);
+
         class p implements Parameters {
 
-            int baz;
+            int baz = 100;
         }
 
         class r implements Result {
@@ -52,19 +74,28 @@ public class TestNormStatementWithResult {
                 "SELECT foo "
                 + "FROM bar "
                 + "WHERE bar.baz = :baz;") NormStatementWithResult<p, r>() {
-        }.execute(null)) {
+        }.execute(c)) {
             for (r r : rs) {
-                System.out.println(r.foo);
+                Assert.assertEquals(1, r.foo);
             }
         }
 
+        Mockito.verify(pstmt).setInt(1, 100);
     }
 
     @Test
     public void testStreaming() throws Exception {
+        Connection c = Mockito.mock(Connection.class);
+        PreparedStatement pstmt = Mockito.mock(PreparedStatement.class);
+        Mockito.when(c.prepareStatement(Mockito.any())).thenReturn(pstmt);
+        ResultSet resultSet = Mockito.mock(ResultSet.class);
+        Mockito.when(pstmt.executeQuery()).thenReturn(resultSet);
+        Mockito.when(resultSet.next()).thenReturn(true).thenReturn(false);
+        Mockito.when(resultSet.getInt(Mockito.anyString())).thenReturn(1);
+
         class p implements Parameters {
 
-            int baz;
+            int baz = 100;
         }
 
         class r implements Result {
@@ -78,7 +109,7 @@ public class TestNormStatementWithResult {
                 "SELECT foo "
                 + "FROM bar "
                 + "WHERE bar.baz = :baz;") NormStatementWithResult<p, r>() {
-        }.execute(null)) {
+        }.execute(c)) {
             foo = StreamSupport.stream(rs
                     .spliterator(), false)
                     .map(l -> l.foo)
@@ -87,16 +118,17 @@ public class TestNormStatementWithResult {
         }
 
         Assert.assertNotNull(foo);
+        Mockito.verify(pstmt).setInt(1, 100);
     }
 
     private static class QueryParameters implements Parameters {
 
-        int baz;
+        Integer baz = 100;
     }
 
     private static class QueryResult implements Result {
 
-        int foo;
+        Integer foo;
     }
 
     @SQL(
@@ -111,9 +143,19 @@ public class TestNormStatementWithResult {
 
     @Test
     public void testReusableStatement() throws Exception {
-        try ( CloseableIterable<QueryResult> rs = QUERY.execute(null)) {
-            rs.forEach(r -> System.out.println(r.foo));
+        Connection c = Mockito.mock(Connection.class);
+        PreparedStatement pstmt = Mockito.mock(PreparedStatement.class);
+        Mockito.when(c.prepareStatement(Mockito.any())).thenReturn(pstmt);
+        ResultSet resultSet = Mockito.mock(ResultSet.class);
+        Mockito.when(pstmt.executeQuery()).thenReturn(resultSet);
+        Mockito.when(resultSet.next()).thenReturn(true).thenReturn(false);
+        Mockito.when(resultSet.getInt(Mockito.anyString())).thenReturn(1);
+
+        try ( CloseableIterable<QueryResult> rs = QUERY.execute(c)) {
+            rs.forEach(r -> Assert.assertEquals((Integer) 1, r.foo));
         }
+
+        Mockito.verify(pstmt).setInt(1, 100);
     }
 
 }
