@@ -96,8 +96,8 @@ public class Outer {
 }
 ```
 
-Once you declare your statement as an out class you get some additional features
-such as a limited amount of compile-time checking. For example, if you have
+Once you declare your statement as outside of a method  you get additional features
+such as compile-time checking. For example, if you have
 variables in your SQL that don't match a field in the parameters class then you
 get a compile error. There are other compile time checks available here too.
 This is the recommended approach for more complex and dynamic statements.
