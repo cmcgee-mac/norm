@@ -50,16 +50,17 @@ class AbstractStatement {
         }
 
         if (sql == null || sql.length != 1) {
-            throw new IllegalArgumentException("All NormStatements must have a single SQL annotation with the SQL statement.");
+            throw new IllegalArgumentException("All NormStatements must have a single SQL annotation with the SQL statement on either the base class or its immediate superclass.");
         }
 
         safeSQL = sql[0].value();
 
         java.lang.reflect.Type[] types = ((ParameterizedType) c.getGenericSuperclass()).getActualTypeArguments();
         if (types == null || types.length > 2) {
-            throw new IllegalArgumentException("NormStatements must be anonymous classes with the generic types for parameter and result.");
+            throw new IllegalArgumentException("NormStatements must extend and provide actual types for the generic variables of the superclass.");
         }
 
+        // TODO this is a hack that may not work with all compilers
         try {
             Field outerThis = getClass().getDeclaredField("this$0");
             outerThis.setAccessible(true);

@@ -44,12 +44,12 @@ for SQL injection. This one of the built-in safety mechanisms. Substitution is
 done only after the statement has been prepared by the database using named
 tokens (e.g. ":baz") that match fields in the parameters class.
 
-At execution time the SQL variables are set using parameters object. The default
+At execution time the SQL variables are set using the parameters object. The default
 constructor above will set the value to the input of the performQuery() method.
 Substitution is done using the name of the field and its declared Java type.
 
 Any misspelled variable names or types between your code and the result/parameter
-class will produce immediate compile errors. If there are parameters that exist
+class will produce runtime exceptions. If there are parameters that exist
 in the query, but are not available in the parameters class they will discovered
 as runtime exceptions.
 
@@ -59,6 +59,8 @@ reflective interfaces. This tends to produce less verbose and more readable code
 Also, if you change the query and results then it's much easier to refactor code
 that depends on a particular column or type in the output.
 
+Inline statements like the one above are best used for simple queries that can
+be more easily verified by code inspection and are unlikely to change very often.
 For re-usable and more complex queries you can put them statically into a class
  as in the following example.
 
@@ -94,8 +96,11 @@ public class Outer {
 }
 ```
 
-If you have a variable in your SQL that doesn't match the parameters then you will
-get a compile error, which makes this approach a little safer and also more testable.
+Once you declare your statement as an out class you get some additional features
+such as a limited amount of compile-time checking. For example, if you have
+variables in your SQL that don't match a field in the parameters class then you
+get a compile error. There are other compile time checks available here too.
+This is the recommended approach for more complex and dynamic statements.
 
 It is also possible to create public classes for the NORM statements, parameters
 and results, but this is not recommended since it promotes the use of more

@@ -16,6 +16,7 @@ import javax.lang.model.element.Element;
 import javax.lang.model.element.TypeElement;
 import javax.lang.model.element.VariableElement;
 import javax.lang.model.type.DeclaredType;
+import javax.lang.model.type.TypeKind;
 import javax.lang.model.type.TypeMirror;
 import javax.tools.Diagnostic;
 
@@ -68,6 +69,16 @@ public class SQLStatementProcessor extends AbstractProcessor {
                                                     "The statement parameter type " + declTypeParamTypElem.getQualifiedName() + " has field with name " + member.getSimpleName() + " but the @SQL query doesn't have a matching variable :" + member.getSimpleName(),
                                                     element
                                             );
+                                        }
+
+                                        VariableElement varMember = (VariableElement) member;
+                                        TypeMirror varType = member.asType();
+                                        if (varType.getKind() == TypeKind.ARRAY) {
+                                            com.github.cmcgeemac.norm.Type t = varMember.getAnnotation(com.github.cmcgeemac.norm.Type.class);
+                                            if (t == null) {
+                                                messager.printMessage(Diagnostic.Kind.ERROR,
+                                                        "The statement parameter type " + declTypeParamTypElem.getQualifiedName() + " has a field with name " + member.getSimpleName() + " that is an array type but specifies no @Type annotation with the database type.");
+                                            }
                                         }
                                     }
                                 }
