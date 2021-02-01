@@ -27,13 +27,13 @@ import java.util.regex.Pattern;
 
 class AbstractStatement {
 
-    private static Pattern VARIABLE_PATTERN = Pattern.compile(":([a-zA-z][a-zA-z0-9]*)");
+    private static final Pattern VARIABLE_PATTERN = Pattern.compile(":([a-zA-z][a-zA-z0-9]*)");
 
-    String safeSQL; // Package private for testing
+    final String safeSQL; // Package private for testing
     protected Object statementOuter;
 
-    private Class<?> paramsClass;
-    protected Constructor<?> paramsCtor;
+    private final Class<?> paramsClass;
+    protected final Constructor<?> paramsCtor;
 
     private List<Field> slots = new ArrayList<Field>();
 
@@ -53,7 +53,7 @@ class AbstractStatement {
             throw new IllegalArgumentException("All NormStatements must have a single SQL annotation with the SQL statement on either the base class or its immediate superclass.");
         }
 
-        safeSQL = sql[0].value();
+        String sqlStr = sql[0].value();
 
         java.lang.reflect.Type[] types = ((ParameterizedType) c.getGenericSuperclass()).getActualTypeArguments();
         if (types == null || types.length > 2) {
@@ -67,6 +67,7 @@ class AbstractStatement {
             statementOuter = outerThis.get(this);
         } catch (IllegalAccessException | IllegalArgumentException | NoSuchFieldException | SecurityException ex) {
             // Best effort
+            statementOuter = null;
         }
 
         paramsClass = (Class<?>) types[0];
@@ -80,7 +81,7 @@ class AbstractStatement {
             paramsCtor.setAccessible(true);
         }
 
-        Matcher m = VARIABLE_PATTERN.matcher(safeSQL);
+        Matcher m = VARIABLE_PATTERN.matcher(sqlStr);
         while (m.find()) {
             String var = m.group(1);
             try {
@@ -100,8 +101,10 @@ class AbstractStatement {
                 throw new IllegalStateException(e.getMessage(), e);
             }
 
-            safeSQL = safeSQL.replaceFirst(":" + var, "?");
+            sqlStr = sqlStr.replaceFirst(":" + var, "?");
         }
+
+        safeSQL = sqlStr;
     }
 
     protected PreparedStatement execute(Connection c, Object p) throws IllegalArgumentException, IllegalAccessException, SQLException {

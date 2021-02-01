@@ -19,8 +19,9 @@ public class TestStatementSQLValidation {
         }
 
         // Variables line up here
-        Assert.assertEquals(new @SQL("UPDATE foo SET bar = :newBaz WHERE foo.bar = :bar;") NormStatement<p>() {
-        }.safeSQL, "UPDATE foo SET bar = ? WHERE foo.bar = ?;");
+        Assert.assertEquals("UPDATE foo SET bar = ? WHERE foo.bar = ?;",
+                new @SQL("UPDATE foo SET bar = :newBaz WHERE foo.bar = :bar;") NormStatement<p>() {
+        }.safeSQL);
 
         // One of the variables could not be found in the parameters class
         try {

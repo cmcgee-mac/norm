@@ -93,8 +93,8 @@ import java.util.logging.Logger;
  */
 public class NormStatementWithResult<P extends Parameters, R extends Result> extends AbstractStatement {
 
-    private Class<R> resultClass;
-    private Constructor<?> resultCtor;
+    private final Class<R> resultClass;
+    private final Constructor<?> resultCtor;
 
     @SuppressWarnings("unchecked")
     public NormStatementWithResult() {
