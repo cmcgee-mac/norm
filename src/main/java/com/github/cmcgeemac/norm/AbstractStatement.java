@@ -75,7 +75,7 @@ class AbstractStatement {
         paramsCtor = Arrays.asList(paramsClass.getDeclaredConstructors()).stream()
                 .filter(ctor -> ctor.getParameterCount() == 0 || (ctor.getParameterCount() == 1 && ctor.getParameterTypes()[0].isInstance(statementOuter)))
                 .findFirst()
-                .get();
+                .orElse(null);
 
         if (paramsCtor != null) {
             paramsCtor.setAccessible(true);

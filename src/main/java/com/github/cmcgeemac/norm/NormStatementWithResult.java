@@ -179,6 +179,8 @@ public class NormStatementWithResult<P extends Parameters, R extends Result> ext
                         } catch (SQLException ex) {
                             // TODO figure out exception strategy
                             Logger.getLogger(NormStatementWithResult.class.getName()).log(Level.SEVERE, null, ex);
+
+                            throw new IllegalStateException(ex.getMessage(), ex);
                         }
 
                         return false;
@@ -198,12 +200,24 @@ public class NormStatementWithResult<P extends Parameters, R extends Result> ext
                                 // TODO blobs, clobs
                                 if (f.getType() == int.class || f.getType() == Integer.class) {
                                     v = rs.getInt(name);
+                                    if (rs.wasNull() && f.getType() == Integer.class) {
+                                        v = null;
+                                    }
                                 } else if (f.getType() == float.class || f.getType() == Float.class) {
                                     v = rs.getFloat(name);
+                                    if (rs.wasNull() && f.getType() == Float.class) {
+                                        v = null;
+                                    }
                                 } else if (f.getType() == double.class || f.getType() == Double.class) {
                                     v = rs.getDouble(name);
+                                    if (rs.wasNull() && f.getType() == Double.class) {
+                                        v = null;
+                                    }
                                 } else if (f.getType() == boolean.class || f.getType() == Boolean.class) {
                                     v = rs.getBoolean(name);
+                                    if (rs.wasNull() && f.getType() == Boolean.class) {
+                                        v = null;
+                                    }
                                 } else if (f.getType() == String.class) {
                                     v = rs.getString(name);
                                 } else if (f.getType() == Date.class) {
@@ -216,6 +230,9 @@ public class NormStatementWithResult<P extends Parameters, R extends Result> ext
                                     v = rs.getBigDecimal(name);
                                 } else if (f.getType() == short.class || f.getType() == Short.class) {
                                     v = rs.getShort(name);
+                                    if (rs.wasNull() && f.getType() == Short.class) {
+                                        v = null;
+                                    }
                                 } else if (f.getType() == URL.class) {
                                     v = rs.getURL(name);
                                 } else if (f.getType().isArray()) {
@@ -229,6 +246,8 @@ public class NormStatementWithResult<P extends Parameters, R extends Result> ext
                             } catch (IllegalAccessException | IllegalArgumentException | SQLException ex) {
                                 // TODO figure out exception strategy
                                 Logger.getLogger(NormStatementWithResult.class.getName()).log(Level.SEVERE, null, ex);
+
+                                throw new IllegalStateException(ex.getMessage(), ex);
                             }
                         }
 
