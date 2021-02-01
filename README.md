@@ -6,8 +6,8 @@ No ORM
 The No ORM (NORM) package is a set of Java utilities built on top of JDBC
 to better integrate SQL queries into your Java code in a safer and type safe
 manner, without re-describing SQL table structures in Java. Instead, the idea
-is to enabling the programmer to write their SQL queries and model the parameters
-and results tailored to each query plugging into Java's type system.
+is to enable the programmer to write their SQL queries and model the parameters
+and results tailored to each query while plugging into Java's type system.
 
 Guiding principles:
 * SQL queries are specified in a static manner where no user data can contaminate them (ie. Java Annotations)
