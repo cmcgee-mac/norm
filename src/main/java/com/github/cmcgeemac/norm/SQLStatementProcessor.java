@@ -21,13 +21,8 @@ import javax.lang.model.type.TypeKind;
 import javax.lang.model.type.TypeMirror;
 import javax.tools.Diagnostic;
 import net.sf.jsqlparser.JSQLParserException;
-import net.sf.jsqlparser.expression.JdbcNamedParameter;
 import net.sf.jsqlparser.parser.CCJSqlParserUtil;
 import net.sf.jsqlparser.statement.Statement;
-import net.sf.jsqlparser.statement.select.PlainSelect;
-import net.sf.jsqlparser.util.deparser.ExpressionDeParser;
-import net.sf.jsqlparser.util.deparser.SelectDeParser;
-import net.sf.jsqlparser.util.deparser.StatementDeParser;
 
 /**
  * Puts certain compile-time constraints on the SQL annotation.
@@ -52,36 +47,7 @@ public class SQLStatementProcessor extends AbstractProcessor {
 
                 try {
                     Statement sqlParsed = CCJSqlParserUtil.parse(annotation.value());
-
-                    ExpressionDeParser ev = new ExpressionDeParser() {
-                        @Override
-                        public void visit(JdbcNamedParameter jdbcNamedParameter) {
-                            referencedParms.add(jdbcNamedParameter.getName());
-                        }
-                    };
-
-                    SelectDeParser sd = new SelectDeParser(ev, new StringBuilder()) {
-                        @Override
-                        public void visit(PlainSelect plainSelect) {
-                            super.visit(plainSelect);
-
-                            if (plainSelect.getLimit() != null) {
-                                if (plainSelect.getLimit().getOffset() != null) {
-                                    plainSelect.getLimit().getOffset().accept(ev);
-                                }
-
-                                if (plainSelect.getLimit().getRowCount() != null) {
-                                    plainSelect.getLimit().getRowCount().accept(ev);
-                                }
-                            }
-
-                            if (plainSelect.getOffset() != null && plainSelect.getOffset().getOffsetJdbcParameter() != null) {
-                                plainSelect.getOffset().getOffsetJdbcParameter().accept(ev);
-                            }
-                        }
-
-                    };
-                    sqlParsed.accept(new StatementDeParser(ev, sd, new StringBuilder()));
+                    Util.visitJdbcParameters(sqlParsed, p -> referencedParms.add(p.getName()));
                 } catch (JSQLParserException ex) {
                     messager.printMessage(Diagnostic.Kind.ERROR,
                             "@SQL annotation has bad SQL statement: " + ex.getMessage(),
