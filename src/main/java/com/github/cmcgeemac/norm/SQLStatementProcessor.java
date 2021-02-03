@@ -24,6 +24,7 @@ import net.sf.jsqlparser.JSQLParserException;
 import net.sf.jsqlparser.expression.JdbcNamedParameter;
 import net.sf.jsqlparser.parser.CCJSqlParserUtil;
 import net.sf.jsqlparser.statement.Statement;
+import net.sf.jsqlparser.statement.select.PlainSelect;
 import net.sf.jsqlparser.util.deparser.ExpressionDeParser;
 import net.sf.jsqlparser.util.deparser.SelectDeParser;
 import net.sf.jsqlparser.util.deparser.StatementDeParser;
@@ -59,7 +60,27 @@ public class SQLStatementProcessor extends AbstractProcessor {
                         }
                     };
 
-                    SelectDeParser sd = new SelectDeParser(ev, new StringBuilder());
+                    SelectDeParser sd = new SelectDeParser(ev, new StringBuilder()) {
+                        @Override
+                        public void visit(PlainSelect plainSelect) {
+                            super.visit(plainSelect);
+
+                            if (plainSelect.getLimit() != null) {
+                                if (plainSelect.getLimit().getOffset() != null) {
+                                    plainSelect.getLimit().getOffset().accept(ev);
+                                }
+
+                                if (plainSelect.getLimit().getRowCount() != null) {
+                                    plainSelect.getLimit().getRowCount().accept(ev);
+                                }
+                            }
+
+                            if (plainSelect.getOffset() != null && plainSelect.getOffset().getOffsetJdbcParameter() != null) {
+                                plainSelect.getOffset().getOffsetJdbcParameter().accept(ev);
+                            }
+                        }
+
+                    };
                     sqlParsed.accept(new StatementDeParser(ev, sd, new StringBuilder()));
                 } catch (JSQLParserException ex) {
                     messager.printMessage(Diagnostic.Kind.ERROR,
