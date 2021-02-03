@@ -121,14 +121,4 @@ public class SQLStatementProcessor extends AbstractProcessor {
         return false;
     }
 
-    @Override
-    public SourceVersion getSupportedSourceVersion() {
-        return super.getSupportedSourceVersion();
-    }
-
-    @Override
-    public Set<String> getSupportedAnnotationTypes() {
-        return super.getSupportedAnnotationTypes();
-    }
-
 }
