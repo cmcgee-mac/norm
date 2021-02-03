@@ -96,7 +96,7 @@ public class Outer {
     int foo;
   }
 
-  @SQL("SELECT foo FROM bar WHERE bar.baz = :baz;")
+  @SQL("SELECT foo FROM bar WHERE bar.baz = :baz")
   static class Statement extends NormStatementWithResults<StatementParams,StatementResult> {
   }
 
@@ -116,7 +116,7 @@ public class Outer {
 Once you declare your statement as outside of a method  you get additional features
 such as compile-time checking. For example, if you have
 variables in your SQL that don't match a field in the parameters class then you
-get a compile error. There are other compile time checks available here too.
+get a compile error. If you have malformed SQL code the compiler will show an error
 This is the recommended approach for more complex and dynamic statements.
 
 Also, since the statement is static and has package visibility it can be used
