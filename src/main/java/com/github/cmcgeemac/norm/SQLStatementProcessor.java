@@ -47,10 +47,13 @@ public class SQLStatementProcessor extends AbstractProcessor {
 
                 try {
                     Statement sqlParsed = CCJSqlParserUtil.parse(annotation.value());
-                    Util.visitJdbcParameters(sqlParsed, p -> referencedParms.add(p.getName()));
+                    Util.visitJdbcParameters(sqlParsed, p -> {
+                        referencedParms.add(p.getName());
+                        return "123NORM321";
+                    });
                 } catch (JSQLParserException ex) {
                     messager.printMessage(Diagnostic.Kind.ERROR,
-                            "@SQL annotation has bad SQL statement: " + ex.getMessage(),
+                            "@SQL annotation has a bad SQL statement: " + ex.getMessage(),
                             element);
                 }
 

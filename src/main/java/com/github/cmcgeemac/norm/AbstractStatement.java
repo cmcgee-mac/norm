@@ -21,13 +21,20 @@ import java.sql.Timestamp;
 import java.sql.Types;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
+import java.util.UUID;
+import java.util.logging.Logger;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
+import net.sf.jsqlparser.JSQLParserException;
+import net.sf.jsqlparser.parser.CCJSqlParserUtil;
+import net.sf.jsqlparser.statement.Statement;
 
 class AbstractStatement {
 
-    private static final Pattern VARIABLE_PATTERN = Pattern.compile(":([a-zA-z][a-zA-z0-9]*)");
+    private static final Pattern VARIABLE_PATTERN = Pattern.compile(":@@@([a-zA-z][a-zA-z0-9]*)@@@");
 
     final String safeSQL; // Package private for testing
     protected Object statementOuter;
@@ -81,27 +88,67 @@ class AbstractStatement {
             paramsCtor.setAccessible(true);
         }
 
-        Matcher m = VARIABLE_PATTERN.matcher(sqlStr);
-        while (m.find()) {
-            String var = m.group(1);
-            try {
-                Field f = paramsClass.getDeclaredField(var);
-                if (f.getType().isArray()) {
-                    com.github.cmcgeemac.norm.Type[] t = f.getAnnotationsByType(com.github.cmcgeemac.norm.Type.class);
-                    if (t == null || t.length != 1) {
-                        throw new IllegalArgumentException("Parameters class field " + f.getName() + " is an array and must have a @Type annotation to set the database type of the ARRAY");
-                    }
+        Set<String> dereferencedParms = new HashSet<>();
+        Set<String> referencedParms = new HashSet<>();
+
+        try {
+            Statement sqlParsed = CCJSqlParserUtil.parse(sqlStr);
+            Util.visitJdbcParameters(sqlParsed, p -> {
+                String token = UUID.randomUUID().toString();
+                try {
+                    Field f = paramsClass.getDeclaredField(p.getName());
+                } catch (NoSuchFieldException | SecurityException ex) {
+                    // This will be caught later on and reported
                 }
-                slots.add(f);
-            } catch (NoSuchFieldException ex) {
-                throw new IllegalArgumentException("Parameter class "
-                        + paramsClass.getTypeName() + " does not have a field "
-                        + var + " found in the SQL statement.");
-            } catch (SecurityException e) {
-                throw new IllegalStateException(e.getMessage(), e);
+                referencedParms.add(p.getName());
+
+                // Generate a very unique token for discovering slots later on
+                return "@@@" + p.getName() + "@@@";
+            });
+            sqlStr = Util.statementToString(sqlParsed);
+        } catch (JSQLParserException ex) {
+            throw new IllegalArgumentException(
+                    "@SQL annotation has a bad SQL statement: " + ex.getMessage(),
+                    ex);
+        }
+
+        for (Field f : paramsClass.getDeclaredFields()) {
+            if (f.isSynthetic()) {
+                continue;
             }
 
-            sqlStr = sqlStr.replaceFirst(":" + var, "?");
+            if (!referencedParms.contains(f.getName())) {
+                Logger.getLogger(AbstractStatement.class.getName()).warning(
+                        "The statement parameter type " + paramsClass.getTypeName() + " has a field with name "
+                        + f.getName() + " but the @SQL query doesn't have a matching variable in " + getClass().getTypeName());
+            } else {
+                dereferencedParms.add(f.getName());
+            }
+
+            if (f.getType().isArray()) {
+                com.github.cmcgeemac.norm.Type[] t = f.getAnnotationsByType(com.github.cmcgeemac.norm.Type.class);
+                if (t == null || t.length != 1) {
+                    throw new IllegalArgumentException("Parameters class field " + f.getName() + " is an array and must have a @Type annotation to set the database type of the ARRAY");
+                }
+            }
+        }
+
+        referencedParms.removeAll(dereferencedParms);
+        if (!referencedParms.isEmpty()) {
+            throw new IllegalArgumentException(
+                    "SQL statement references the following variables from parameters class that do not exist: " + referencedParms);
+        }
+
+        Matcher m = VARIABLE_PATTERN.matcher(sqlStr);
+
+        while (m.find()) {
+            try {
+                slots.add(paramsClass.getDeclaredField(m.group(1)));
+            } catch (NoSuchFieldException ex) {
+                // This should not happen because an exception would have been thrown above
+            }
+            sqlStr = m.replaceFirst("?");
+            m = VARIABLE_PATTERN.matcher(sqlStr);
         }
 
         safeSQL = sqlStr;

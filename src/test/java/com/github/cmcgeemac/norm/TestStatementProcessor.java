@@ -22,7 +22,10 @@ public class TestStatementProcessor {
                 + "FROM foo "
                 + "WHERE foo.id = :id LIMIT :bar");
         final List<String> results = new ArrayList<>();
-        Util.visitJdbcParameters(sqlParsed, p -> results.add(p.getName()));
+        Util.visitJdbcParameters(sqlParsed, p -> {
+            results.add(p.getName());
+            return p.getName();
+        });
         Assert.assertEquals(Arrays.asList("id", "bar"), results);
 
         // Variable in OFFSET
@@ -30,7 +33,10 @@ public class TestStatementProcessor {
                 + "FROM foo "
                 + "WHERE foo.id = :id OFFSET :bar");
         results.clear();
-        Util.visitJdbcParameters(sqlParsed, p -> results.add(p.getName()));
+        Util.visitJdbcParameters(sqlParsed, p -> {
+            results.add(p.getName());
+            return p.getName();
+        });
         Assert.assertEquals(Arrays.asList("id", "bar"), results);
 
         // Variables in WHERE and SET
@@ -38,20 +44,29 @@ public class TestStatementProcessor {
                 + "SET bar = :bar "
                 + "WHERE foo.id = :id");
         results.clear();
-        Util.visitJdbcParameters(sqlParsed, p -> results.add(p.getName()));
+        Util.visitJdbcParameters(sqlParsed, p -> {
+            results.add(p.getName());
+            return p.getName();
+        });
         Assert.assertEquals(Arrays.asList("bar", "id"), results);
 
         // Variables in INSERT
         sqlParsed = CCJSqlParserUtil.parse("INSERT INTO foo (id, bar)"
                 + "VALUES(:id, :bar)");
         results.clear();
-        Util.visitJdbcParameters(sqlParsed, p -> results.add(p.getName()));
+        Util.visitJdbcParameters(sqlParsed, p -> {
+            results.add(p.getName());
+            return p.getName();
+        });
         Assert.assertEquals(Arrays.asList("id", "bar"), results);
 
         // Variables in SELECT
         sqlParsed = CCJSqlParserUtil.parse("SELECT :id + 1 FROM baz WHERE bar = :bar");
         results.clear();
-        Util.visitJdbcParameters(sqlParsed, p -> results.add(p.getName()));
+        Util.visitJdbcParameters(sqlParsed, p -> {
+            results.add(p.getName());
+            return p.getName();
+        });
         Assert.assertEquals(Arrays.asList("id", "bar"), results);
     }
 }

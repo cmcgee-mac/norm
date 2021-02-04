@@ -14,16 +14,29 @@ import net.sf.jsqlparser.util.deparser.StatementDeParser;
 
 class Util {
 
+    static String statementToString(Statement sqlParsed) {
+        StringBuilder buffer = new StringBuilder();
+        ExpressionDeParser expr = new ExpressionDeParser();
+
+        SelectDeParser selectDeparser = new SelectDeParser(expr, buffer);
+        expr.setSelectVisitor(selectDeparser);
+        expr.setBuffer(buffer);
+        StatementDeParser stmtDeparser = new StatementDeParser(expr, selectDeparser, buffer);
+
+        sqlParsed.accept(stmtDeparser);
+        return stmtDeparser.getBuffer().toString();
+    }
+
     interface jdbcHandler {
 
-        public void handle(JdbcNamedParameter param);
+        public String handle(JdbcNamedParameter param);
     }
 
     static void visitJdbcParameters(Statement statement, jdbcHandler jdbcHandler) {
         ExpressionDeParser ev = new ExpressionDeParser() {
             @Override
             public void visit(JdbcNamedParameter jdbcNamedParameter) {
-                jdbcHandler.handle(jdbcNamedParameter);
+                jdbcNamedParameter.setName(jdbcHandler.handle(jdbcNamedParameter));
             }
         };
 
