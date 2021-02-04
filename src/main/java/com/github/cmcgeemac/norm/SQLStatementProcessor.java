@@ -5,21 +5,31 @@
  */
 package com.github.cmcgeemac.norm;
 
+import static com.github.cmcgeemac.norm.AbstractStatement.VARIABLE_PATTERN;
+import java.io.IOException;
+import java.io.Writer;
 import java.util.HashSet;
 import java.util.Set;
+import java.util.logging.Level;
+import java.util.logging.Logger;
+import java.util.regex.Matcher;
 import javax.annotation.processing.AbstractProcessor;
+import javax.annotation.processing.Filer;
 import javax.annotation.processing.Messager;
 import javax.annotation.processing.RoundEnvironment;
 import javax.annotation.processing.SupportedAnnotationTypes;
 import javax.annotation.processing.SupportedSourceVersion;
 import javax.lang.model.SourceVersion;
 import javax.lang.model.element.Element;
+import javax.lang.model.element.ElementKind;
+import javax.lang.model.element.PackageElement;
 import javax.lang.model.element.TypeElement;
 import javax.lang.model.element.VariableElement;
 import javax.lang.model.type.DeclaredType;
 import javax.lang.model.type.TypeKind;
 import javax.lang.model.type.TypeMirror;
 import javax.tools.Diagnostic;
+import javax.tools.JavaFileObject;
 import net.sf.jsqlparser.JSQLParserException;
 import net.sf.jsqlparser.parser.CCJSqlParserUtil;
 import net.sf.jsqlparser.statement.Statement;
@@ -34,6 +44,11 @@ public class SQLStatementProcessor extends AbstractProcessor {
     @Override
     public boolean process(Set<? extends TypeElement> annotations, RoundEnvironment env) {
         Messager messager = processingEnv.getMessager();
+        Filer filer = processingEnv.getFiler();
+
+        // FIXME remove!
+        messager.printMessage(Diagnostic.Kind.MANDATORY_WARNING,
+                "Yay7");
 
         for (TypeElement typeElement : annotations) {
             for (Element element : env.getElementsAnnotatedWith(typeElement)) {
@@ -41,23 +56,27 @@ public class SQLStatementProcessor extends AbstractProcessor {
                     continue;
                 }
 
+                TypeElement tElement = (TypeElement) element;
+
                 SQL annotation = element.getAnnotation(SQL.class);
                 Set<String> referencedParms = new HashSet<>();
                 Set<String> dereferencedParms = new HashSet<>();
+
+                String safeSQL = "";
 
                 try {
                     Statement sqlParsed = CCJSqlParserUtil.parse(annotation.value());
                     Util.visitJdbcParameters(sqlParsed, p -> {
                         referencedParms.add(p.getName());
-                        return "123NORM321";
+                        return "@@@" + p.getName() + "@@@";
                     });
+                    safeSQL = Util.statementToString(sqlParsed);
                 } catch (JSQLParserException ex) {
                     messager.printMessage(Diagnostic.Kind.ERROR,
                             "@SQL annotation has a bad SQL statement: " + ex.getMessage(),
                             element);
                 }
 
-                TypeElement tElement = (TypeElement) element;
                 TypeMirror superType = tElement.getSuperclass();
                 if (superType instanceof DeclaredType) {
                     DeclaredType declSuperType = (DeclaredType) superType;
@@ -71,11 +90,21 @@ public class SQLStatementProcessor extends AbstractProcessor {
                         );
                     }
 
+                    Element paramsDeclType = null;
+                    Element resultsDeclType = null;
+
                     for (TypeMirror arg : declSuperType.getTypeArguments()) {
                         if (arg instanceof DeclaredType) {
                             DeclaredType declTypeParam = (DeclaredType) arg;
 
                             Element declTypeParamElem = declTypeParam.asElement();
+
+                            if (paramsDeclType == null) {
+                                paramsDeclType = declTypeParamElem;
+                            } else {
+                                resultsDeclType = declTypeParamElem;
+                                break;
+                            }
 
                             if (declTypeParamElem instanceof TypeElement) {
                                 TypeElement declTypeParamTypElem = (TypeElement) declTypeParamElem;
@@ -107,16 +136,109 @@ public class SQLStatementProcessor extends AbstractProcessor {
                                 }
                             }
                         }
-
-                        break;
                     }
-                }
 
-                referencedParms.removeAll(dereferencedParms);
-                if (!referencedParms.isEmpty()) {
-                    messager.printMessage(Diagnostic.Kind.ERROR,
-                            "SQL statement references the following variables from parameters class that do not exist: " + referencedParms,
-                            element);
+                    referencedParms.removeAll(dereferencedParms);
+                    if (!referencedParms.isEmpty()) {
+                        messager.printMessage(Diagnostic.Kind.ERROR,
+                                "SQL statement references the following variables from parameters class that do not exist: " + referencedParms,
+                                element);
+                    }
+
+                    try {
+                        // Find the nearest package
+                        Element pkg = tElement;
+                        while (pkg.getKind() != ElementKind.PACKAGE) {
+                            pkg = pkg.getEnclosingElement();
+                        }
+
+                        // Find the enclosing class, if any
+                        Element cls = (tElement.getEnclosingElement().getKind() == ElementKind.CLASS) ? tElement.getEnclosingElement() : null;
+
+                        String fqParametersClass = ((PackageElement) pkg).getQualifiedName() + "." + (cls != null ? cls.getSimpleName() + "." : "") + paramsDeclType.getSimpleName();
+
+                        String fqResultsClass = resultsDeclType != null ? ((PackageElement) pkg).getQualifiedName() + "." + (cls != null ? cls.getSimpleName() + "." : "") + resultsDeclType.getSimpleName() : "Object";
+
+                        String handlerClass = "" + (cls != null ? cls.getSimpleName() : "") + tElement.getSimpleName() + "NormHandler";
+                        String pkgName = ((PackageElement) pkg).getQualifiedName().toString();
+                        if (pkgName.length() == 0) {
+                            continue;
+                        }
+                        String fqHandlerClass = pkgName + "." + handlerClass;
+
+                        Writer w = null;
+
+                        try {
+                            JavaFileObject jf = filer.createSourceFile(fqHandlerClass, tElement, cls, paramsDeclType, resultsDeclType);
+                            w = jf.openWriter();
+                        } catch (IOException e) {
+                            Logger.getLogger(SQLStatementProcessor.class.getName()).log(Level.SEVERE, null, e);
+                        }
+
+                        if (w != null) {
+                            w.write("package " + ((PackageElement) pkg).getQualifiedName() + ";\n");
+                            w.write("\n");
+                            w.write("import java.sql.PreparedStatement;\n");
+                            w.write("import java.sql.ResultSet;\n");
+                            w.write("import java.sql.SQLException;\n");
+                            w.write("\n");
+                            w.write("public class " + handlerClass + " implements com.github.cmcgeemac.norm.StatementHandler<" + fqParametersClass + "," + fqResultsClass + "> {\n");
+                            w.write("    @Override\n");
+                            w.write("    public void setParameters(" + fqParametersClass + " p, PreparedStatement pstmt) throws SQLException {\n");
+                            w.write("        int idx = 1;\n");
+
+                            Matcher m = VARIABLE_PATTERN.matcher(safeSQL);
+                            while (m.find()) {
+                                for (Element member : this.processingEnv.getElementUtils().getAllMembers((TypeElement) paramsDeclType)) {
+                                    if (!member.getSimpleName().toString().equals(m.group(1))) {
+                                        continue;
+                                    }
+
+                                    if (member.getKind() == ElementKind.FIELD) {
+                                        TypeMirror varType = member.asType();
+
+                                        if (varType.getKind() == TypeKind.INT) {
+                                            w.write("        pstmt.setInt(idx++, p." + member.getSimpleName() + ");\n");
+                                        } else {
+
+                                            w.write("        //" + member.getSimpleName() + ":" + varType + "\n");
+                                        }
+                                    }
+                                }
+
+                                safeSQL = m.replaceFirst("?");
+                                m = VARIABLE_PATTERN.matcher(safeSQL);
+                            }
+                            w.write("    }\n");
+                            w.write("\n");
+                            w.write("    @Override\n");
+                            w.write("    public void result(" + fqResultsClass + " r, ResultSet rs) throws SQLException {\n");
+                            if (resultsDeclType != null) {
+                                for (Element member : this.processingEnv.getElementUtils().getAllMembers((TypeElement) resultsDeclType)) {
+                                    if (member.getKind() == ElementKind.FIELD) {
+                                        TypeMirror varType = member.asType();
+
+                                        if (varType.getKind() == TypeKind.INT) {
+                                            w.write("        r." + member.getSimpleName() + " = rs.getInt(\"" + member.getSimpleName() + "\");\n");
+                                        } else {
+
+                                            w.write("        //" + member.getSimpleName() + ":" + varType + "\n");
+                                        }
+                                    }
+                                }
+                            }
+                            w.write("    }\n");
+                            w.write("    @Override\n");
+                            w.write("    public String getSafeSQL() {\n");
+                            w.write("        return \"" + safeSQL + "\";\n");
+                            w.write("    }\n");
+                            w.write("\n");
+                            w.write("}\n");
+                            w.close();
+                        }
+                    } catch (IOException ex) {
+                        Logger.getLogger(SQLStatementProcessor.class.getName()).log(Level.SEVERE, null, ex);
+                    }
                 }
             }
         }

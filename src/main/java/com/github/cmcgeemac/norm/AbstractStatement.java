@@ -25,6 +25,7 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 import java.util.UUID;
+import java.util.logging.Level;
 import java.util.logging.Logger;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -32,22 +33,97 @@ import net.sf.jsqlparser.JSQLParserException;
 import net.sf.jsqlparser.parser.CCJSqlParserUtil;
 import net.sf.jsqlparser.statement.Statement;
 
-class AbstractStatement {
+class AbstractStatement<P> {
 
-    private static final Pattern VARIABLE_PATTERN = Pattern.compile(":@@@([a-zA-z][a-zA-z0-9]*)@@@");
+    static final Pattern VARIABLE_PATTERN = Pattern.compile(":@@@([a-zA-z][a-zA-z0-9]*)@@@");
 
-    final String safeSQL; // Package private for testing
+    String safeSQL; // Package private for testing
     protected Object statementOuter;
 
-    private final Class<?> paramsClass;
-    protected final Constructor<?> paramsCtor;
+    private Class<?> paramsClass;
+    protected Constructor<?> paramsCtor;
 
-    private List<Field> slots = new ArrayList<Field>();
+    private List<Field> slots;
+
+    protected StatementHandler handler;
 
     public AbstractStatement() {
         super();
 
         Class<?> c = getClass();
+        Class<?> ec = c.getEnclosingClass();
+
+        String handlerClassName = c.getPackage().getName() + "." + (ec != null ? ec.getSimpleName() : "") + c.getSimpleName() + "NormHandler";
+
+        try {
+            Class<?> h = Class.forName(handlerClassName);
+            handler = (StatementHandler) h.newInstance();
+            safeSQL = handler.getSafeSQL();
+            statementOuter = null;
+            paramsClass = null;
+            paramsCtor = null;
+        } catch (ClassNotFoundException | IllegalAccessException | InstantiationException ex) {
+            Logger.getLogger(AbstractStatement.class.getName()).log(Level.INFO,
+                    "No handler found " + handlerClassName + " proceeding with reflection", ex);
+
+            initWithReflection(c);
+        }
+    }
+
+    protected PreparedStatement createPreparedStatement(Connection c, P p) throws IllegalArgumentException, IllegalAccessException, SQLException {
+        PreparedStatement pstmt = c.prepareStatement(safeSQL);
+
+        if (handler != null) {
+            handler.setParameters(p, pstmt);
+            return pstmt;
+        }
+
+        int idx = 1;
+        for (Field f : slots) {
+            // Ensure accessibility
+            f.setAccessible(true);
+
+            Object v = f.get(p);
+
+            // TODO blob, clob
+            if (v == null) {
+                pstmt.setNull(idx++, Types.NULL);
+            } else if (v instanceof Integer) {
+                pstmt.setInt(idx++, (Integer) v);
+            } else if (v instanceof Date) {
+                pstmt.setDate(idx++, (Date) v);
+            } else if (v instanceof BigDecimal) {
+                pstmt.setBigDecimal(idx++, (BigDecimal) v);
+            } else if (v instanceof Float) {
+                pstmt.setFloat(idx++, (Float) v);
+            } else if (v instanceof Double) {
+                pstmt.setDouble(idx++, (Double) v);
+            } else if (v instanceof Short) {
+                pstmt.setShort(idx++, (Short) v);
+            } else if (v instanceof String) {
+                pstmt.setString(idx++, (String) v);
+            } else if (v instanceof Time) {
+                pstmt.setTime(idx++, (Time) v);
+            } else if (v instanceof Timestamp) {
+                pstmt.setTimestamp(idx++, (Timestamp) v);
+            } else if (v instanceof URL) {
+                pstmt.setURL(idx++, (URL) v);
+            } else if (v instanceof Array) {
+                pstmt.setArray(idx++, (Array) v);
+            } else if (v instanceof Boolean) {
+                pstmt.setBoolean(idx++, (Boolean) v);
+            } else if (v.getClass().isArray()) {
+                com.github.cmcgeemac.norm.Type[] t = f.getAnnotationsByType(com.github.cmcgeemac.norm.Type.class);
+                pstmt.setArray(idx++, c.createArrayOf(t[0].value(), (Object[]) v));
+            } else {
+                pstmt.setObject(idx++, v);
+            }
+        }
+
+        return pstmt;
+    }
+
+    private void initWithReflection(Class<?> c) {
         SQL[] sql = c.getAnnotationsByType(SQL.class);
 
         // The SQL annotation can either be on the subclass or the parent class
@@ -140,7 +216,7 @@ class AbstractStatement {
         }
 
         Matcher m = VARIABLE_PATTERN.matcher(sqlStr);
-
+        slots = new ArrayList<>();
         while (m.find()) {
             try {
                 slots.add(paramsClass.getDeclaredField(m.group(1)));
@@ -152,54 +228,6 @@ class AbstractStatement {
         }
 
         safeSQL = sqlStr;
-    }
-
-    protected PreparedStatement execute(Connection c, Object p) throws IllegalArgumentException, IllegalAccessException, SQLException {
-        PreparedStatement pstmt = c.prepareStatement(safeSQL);
-
-        int idx = 1;
-        for (Field f : slots) {
-            // Ensure accessibility
-            f.setAccessible(true);
-
-            Object v = f.get(p);
-
-            // TODO blob, clob
-            if (v == null) {
-                pstmt.setNull(idx++, Types.NULL);
-            } else if (v instanceof Integer) {
-                pstmt.setInt(idx++, (Integer) v);
-            } else if (v instanceof Date) {
-                pstmt.setDate(idx++, (Date) v);
-            } else if (v instanceof BigDecimal) {
-                pstmt.setBigDecimal(idx++, (BigDecimal) v);
-            } else if (v instanceof Float) {
-                pstmt.setFloat(idx++, (Float) v);
-            } else if (v instanceof Double) {
-                pstmt.setDouble(idx++, (Double) v);
-            } else if (v instanceof Short) {
-                pstmt.setShort(idx++, (Short) v);
-            } else if (v instanceof String) {
-                pstmt.setString(idx++, (String) v);
-            } else if (v instanceof Time) {
-                pstmt.setTime(idx++, (Time) v);
-            } else if (v instanceof Timestamp) {
-                pstmt.setTimestamp(idx++, (Timestamp) v);
-            } else if (v instanceof URL) {
-                pstmt.setURL(idx++, (URL) v);
-            } else if (v instanceof Array) {
-                pstmt.setArray(idx++, (Array) v);
-            } else if (v instanceof Boolean) {
-                pstmt.setBoolean(idx++, (Boolean) v);
-            } else if (v.getClass().isArray()) {
-                com.github.cmcgeemac.norm.Type[] t = f.getAnnotationsByType(com.github.cmcgeemac.norm.Type.class);
-                pstmt.setArray(idx++, c.createArrayOf(t[0].value(), (Object[]) v));
-            } else {
-                pstmt.setObject(idx++, v);
-            }
-        }
-
-        return pstmt;
     }
 
 }

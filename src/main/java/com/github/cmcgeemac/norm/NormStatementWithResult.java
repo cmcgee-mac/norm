@@ -91,7 +91,7 @@ import java.util.logging.Logger;
  * }
  * </pre>
  */
-public class NormStatementWithResult<P extends Parameters, R extends Result> extends AbstractStatement {
+public class NormStatementWithResult<P extends Parameters, R extends Result> extends AbstractStatement<P> {
 
     private final Class<R> resultClass;
     private final Constructor<?> resultCtor;
@@ -156,7 +156,7 @@ public class NormStatementWithResult<P extends Parameters, R extends Result> ext
 
         PreparedStatement pstmt;
         try {
-            pstmt = super.execute(c, p);
+            pstmt = super.createPreparedStatement(c, p);
         } catch (IllegalAccessException | IllegalArgumentException | SQLException ex) {
             throw new SQLException("Error preparing statement", ex);
         }
@@ -188,11 +188,23 @@ public class NormStatementWithResult<P extends Parameters, R extends Result> ext
                     public R next() {
                         R r = constructResult();
 
+                        if (handler != null) {
+                            try {
+                                handler.result(r, rs);
+                                return r;
+                            } catch (SQLException ex) {
+                                // TODO figure out exception strategy
+                                Logger.getLogger(NormStatementWithResult.class.getName()).log(Level.SEVERE, null, ex);
+
+                                throw new IllegalStateException(ex.getMessage(), ex);
+                            }
+                        }
+
                         for (Field f : resultClass.getDeclaredFields()) {
                             f.setAccessible(true);
 
                             try {
-                                Object v = null;
+                                Object v;
                                 String name = f.getName();
 
                                 // TODO blobs, clobs

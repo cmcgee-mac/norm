@@ -19,7 +19,7 @@ import java.sql.SQLException;
  *
  * @param <P> The parameters class with the variables for this statement.
  */
-public class NormStatement<P extends Parameters> extends AbstractStatement {
+public class NormStatement<P extends Parameters> extends AbstractStatement<P> {
 
     public NormStatement() {
         super();
@@ -49,7 +49,7 @@ public class NormStatement<P extends Parameters> extends AbstractStatement {
     public int executeUpdate(Connection c, P p) throws SQLException {
         PreparedStatement pstmt;
         try {
-            pstmt = execute(c, p);
+            pstmt = createPreparedStatement(c, p);
         } catch (IllegalAccessException | IllegalArgumentException | SQLException ex) {
             throw new SQLException("Error preparing statement", ex);
         }

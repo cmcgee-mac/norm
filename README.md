@@ -15,7 +15,7 @@ Guiding principles:
 * Prefer compile time and then initialization time checking over execution time checking to find problems earlier
 * Choose flexible Java interfaces to enable flexible and safe uses of the queries
 
-Here is a light-weight example of a private query that you can put directly into
+Here is a light-weight example of a private query that you can put inline into
 a method.
 
 ```java
@@ -40,7 +40,7 @@ a method.
 
 You can see that the SQL query is provided as a Java annotation, which does not
 permit any non-static content from entering the query, which could be the vector
-for SQL injection. This one of the built-in safety mechanisms. Substitution is
+for SQL injection. This is one of the built-in safety mechanisms. Substitution is
 done only after the statement has been prepared by the database using named
 tokens (e.g. ":baz") that match fields in the parameters class.
 
@@ -74,7 +74,7 @@ reflective interfaces. This tends to produce less verbose and more readable code
 Also, if you change the query and results then it's much easier to refactor code
 that depends on a particular column or type in the output.
 
-## Complex Statements
+## First Class Statements
 
 Inline statements like the one above are best used for simple queries that can
 be more easily verified by code inspection and are unlikely to change very often.
@@ -113,7 +113,7 @@ public class Outer {
 }
 ```
 
-Once you declare your statement as outside of a method  you get additional features
+Once you declare your statement as first class you get additional features
 such as compile-time checking. For example, if you have
 variables in your SQL that don't match a field in the parameters class then you
 get a compile error. If you have malformed SQL code the compiler will show an error
@@ -123,6 +123,22 @@ Also, since the statement is static and has package visibility it can be used
 in an automated test environment with a database connection to drive different
 test cases for the SQL query directly.
 
+```
+@Test
+public void testMyStatement() {
+    Connection conn = ...
+    try (CloseableIterable<Outer.StatementResult> rs = Outer.STATEMENT.execute(conn, new Outer.StatementParameter().setBaz(1)) {
+        rs.forEach( r -> Assert.assertEquals(1, r.baz) );
+    }
+}
+```
+
+Another benefit to first classs statements is that they are much faster for
+statements that produce a large number of results or are repetitive. This is due
+to the code generation that becomes possible when the statements exist outside of
+a method. Without the code generation all of the operations are done using Java
+reflection, which can be slower.
+
 ## The ORM Trap
 
 It is also possible to create public classes for the NORM statements, parameters
@@ -130,4 +146,12 @@ and results, but this is not recommended since it promotes the use of more
 generalized SQL statements instead of case-specific ones that can be customized
 easily without large refactoring operations on your code base. We try to tap into
 the power of SQL directly for each situation.
+
+## Troubleshooting
+
+### Note about NetBeans
+
+NetBeans has a [bug](https://issues.apache.org/jira/browse/NETBEANS-5331) that interferes
+with updates to the generated code. A workaround is to disable the "compile on save" option
+when using nb-javac in your project settings (right-click project -> Properties -> Build -> Compile).
 
