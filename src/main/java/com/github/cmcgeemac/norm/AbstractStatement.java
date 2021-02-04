@@ -74,7 +74,7 @@ class AbstractStatement<P> {
         PreparedStatement pstmt = c.prepareStatement(safeSQL);
 
         if (handler != null) {
-            handler.setParameters(p, pstmt);
+            handler.setParameters(p, pstmt, c);
             return pstmt;
         }
 
@@ -90,6 +90,8 @@ class AbstractStatement<P> {
                 pstmt.setNull(idx++, Types.NULL);
             } else if (v instanceof Integer) {
                 pstmt.setInt(idx++, (Integer) v);
+            } else if (v instanceof Long) {
+                pstmt.setLong(idx++, (Long) v);
             } else if (v instanceof Date) {
                 pstmt.setDate(idx++, (Date) v);
             } else if (v instanceof BigDecimal) {

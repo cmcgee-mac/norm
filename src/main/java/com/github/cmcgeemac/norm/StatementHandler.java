@@ -5,19 +5,19 @@
  */
 package com.github.cmcgeemac.norm;
 
+import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 
 /**
- *
- * @author cmcgee
+ * Internal use only. Used for code generation and can change without notice.
  */
 public interface StatementHandler<P, R> {
 
     public String getSafeSQL();
 
-    public void setParameters(P p, PreparedStatement pstmt) throws SQLException;
+    public void setParameters(P p, PreparedStatement pstmt, Connection conn) throws SQLException;
 
     public void result(R r, ResultSet rs) throws SQLException;
 
