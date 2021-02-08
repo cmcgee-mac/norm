@@ -24,12 +24,12 @@ import java.util.Arrays;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
-import java.util.UUID;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import net.sf.jsqlparser.JSQLParserException;
+import net.sf.jsqlparser.expression.JdbcNamedParameter;
 import net.sf.jsqlparser.parser.CCJSqlParserUtil;
 import net.sf.jsqlparser.statement.Statement;
 
@@ -171,17 +171,19 @@ class AbstractStatement<P> {
 
         try {
             Statement sqlParsed = CCJSqlParserUtil.parse(sqlStr);
-            Util.visitJdbcParameters(sqlParsed, p -> {
-                String token = UUID.randomUUID().toString();
-                try {
-                    Field f = paramsClass.getDeclaredField(p.getName());
-                } catch (NoSuchFieldException | SecurityException ex) {
-                    // This will be caught later on and reported
-                }
-                referencedParms.add(p.getName());
+            Util.visitJdbcParameters(sqlParsed, new Util.jdbcHandler() {
+                @Override
+                public String handle(JdbcNamedParameter p) {
+                    try {
+                        Field f = paramsClass.getDeclaredField(p.getName());
+                    } catch (NoSuchFieldException | SecurityException ex) {
+                        // This will be caught later on and reported
+                    }
+                    referencedParms.add(p.getName());
 
-                // Generate a very unique token for discovering slots later on
-                return "@@@" + p.getName() + "@@@";
+                    // Generate a very unique token for discovering slots later on
+                    return "@@@" + p.getName() + "@@@";
+                }
             });
             sqlStr = Util.statementToString(sqlParsed);
         } catch (JSQLParserException ex) {
