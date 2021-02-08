@@ -66,6 +66,11 @@ class AbstractStatement<P> {
             Logger.getLogger(AbstractStatement.class.getName()).log(Level.INFO,
                     "No handler found " + handlerClassName + " proceeding with reflection", ex);
 
+            AssertCodeGen[] cg = c.getAnnotationsByType(AssertCodeGen.class);
+            if (cg.length != 0) {
+                throw new IllegalStateException("Statement is declared as @CodeGenerate but not code generated handler is present. Check the compiler settings that permit annotation processor.");
+            }
+
             initWithReflection(c);
         }
     }

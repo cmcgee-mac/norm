@@ -194,6 +194,13 @@ public class SQLStatementProcessor extends AbstractProcessor {
                         codeGen = false;
                     }
 
+                    AssertCodeGen cg = statementElement.getAnnotation(AssertCodeGen.class);
+                    if (cg != null && !codeGen) {
+                        messager.printMessage(Diagnostic.Kind.ERROR,
+                                "SQL statement is declared as requiring code generation, but none will be generated. Check other compiler messages for details on the reason(s)",
+                                statementElement);
+                    }
+
                     try {
                         // Find the nearest package
                         Element pkg = statementElement;
