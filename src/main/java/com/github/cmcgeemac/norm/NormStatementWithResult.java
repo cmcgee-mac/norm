@@ -165,7 +165,7 @@ public class NormStatementWithResult<P extends Parameters, R extends Result> ext
 
         return new CloseableIterable<R>() {
             @Override
-            public void close() throws Exception {
+            public void close() throws SQLException {
                 rs.close();
             }
 
@@ -184,7 +184,6 @@ public class NormStatementWithResult<P extends Parameters, R extends Result> ext
                         }
                     }
 
-                    @Override
                     public R next() {
                         R r = constructResult();
 

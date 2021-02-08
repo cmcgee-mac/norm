@@ -12,6 +12,7 @@ import java.sql.SQLException;
 
 /**
  * Internal use only. Used for code generation and can change without notice.
+ * External classes should neither implement this interface nor use it.
  */
 public interface StatementHandler<P, R> {
 

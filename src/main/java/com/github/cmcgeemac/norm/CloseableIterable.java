@@ -5,10 +5,15 @@
  */
 package com.github.cmcgeemac.norm;
 
+import java.sql.SQLException;
 
 /**
  * Represents an iterable that also must be closed afterwards.
+ *
+ * @param <R> Result type for iteration.
  */
 public interface CloseableIterable<R> extends Iterable<R>, AutoCloseable {
 
+    @Override
+    public void close() throws SQLException;
 }

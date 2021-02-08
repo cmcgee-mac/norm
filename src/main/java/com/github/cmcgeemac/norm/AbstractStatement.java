@@ -70,6 +70,7 @@ class AbstractStatement<P> {
         }
     }
 
+    @SuppressWarnings("unchecked")
     protected PreparedStatement createPreparedStatement(Connection c, P p) throws IllegalArgumentException, IllegalAccessException, SQLException {
         PreparedStatement pstmt = c.prepareStatement(safeSQL);
 
@@ -171,19 +172,11 @@ class AbstractStatement<P> {
 
         try {
             Statement sqlParsed = CCJSqlParserUtil.parse(sqlStr);
-            Util.visitJdbcParameters(sqlParsed, new Util.jdbcHandler() {
-                @Override
-                public String handle(JdbcNamedParameter p) {
-                    try {
-                        Field f = paramsClass.getDeclaredField(p.getName());
-                    } catch (NoSuchFieldException | SecurityException ex) {
-                        // This will be caught later on and reported
-                    }
-                    referencedParms.add(p.getName());
+            Util.visitJdbcParameters(sqlParsed, (JdbcNamedParameter p) -> {
+                referencedParms.add(p.getName());
 
-                    // Generate a very unique token for discovering slots later on
-                    return "@@@" + p.getName() + "@@@";
-                }
+                // Generate a very unique token for discovering slots later on
+                return "@@@" + p.getName() + "@@@";
             });
             sqlStr = Util.statementToString(sqlParsed);
         } catch (JSQLParserException ex) {

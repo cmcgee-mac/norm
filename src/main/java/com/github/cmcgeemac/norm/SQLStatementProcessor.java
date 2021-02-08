@@ -37,7 +37,9 @@ import net.sf.jsqlparser.parser.CCJSqlParserUtil;
 import net.sf.jsqlparser.statement.Statement;
 
 /**
- * Puts certain compile-time constraints on the SQL annotation.
+ * Puts certain compile-time constraints on the SQL annotation and performs code
+ * generation for improved runtime performance. This class is not intended for
+ * external use. It is installed automatically as a service in the compiler.
  */
 @SupportedSourceVersion(SourceVersion.RELEASE_8)
 @SupportedAnnotationTypes("com.github.cmcgeemac.norm.SQL")
@@ -364,76 +366,88 @@ public class SQLStatementProcessor extends AbstractProcessor {
                                 if (member.getKind() == ElementKind.FIELD) {
                                     TypeMirror varType = member.asType();
 
-                                    if (varType.getKind() == TypeKind.INT) {
-                                        w.write("        r." + member.getSimpleName() + " = rs.getInt(\"" + member.getSimpleName() + "\");\n");
-                                    } else if (varType.getKind() == TypeKind.BOOLEAN) {
-                                        w.write("        r." + member.getSimpleName() + " = rs.getBoolean(\"" + member.getSimpleName() + "\");\n");
-                                    } else if (varType.getKind() == TypeKind.ARRAY) {
-                                        w.write("        r." + member.getSimpleName() + " = (" + varType.toString() + ")rs.getArray(\"" + member.getSimpleName() + "\").getArray();\n");
-                                    } else if (varType.getKind() == TypeKind.DOUBLE) {
-                                        w.write("        r." + member.getSimpleName() + " = rs.getDouble(\"" + member.getSimpleName() + "\");\n");
-                                    } else if (varType.getKind() == TypeKind.FLOAT) {
-                                        w.write("        r." + member.getSimpleName() + " = rs.getFloat(\"" + member.getSimpleName() + "\");\n");
-                                    } else if (varType.getKind() == TypeKind.LONG) {
-                                        w.write("        r." + member.getSimpleName() + " = rs.getLong(\"" + member.getSimpleName() + "\");\n");
-                                    } else if (varType.getKind() == TypeKind.SHORT) {
-                                        w.write("        r." + member.getSimpleName() + " = rs.getShort(\"" + member.getSimpleName() + "\");\n");
-                                    } else if (varType.getKind() == TypeKind.DECLARED) {
-                                        DeclaredType declType = (DeclaredType) varType;
-                                        Element varClassTypeElement = declType.asElement();
+                                    if (null != varType.getKind()) {
+                                        switch (varType.getKind()) {
+                                            case INT:
+                                                w.write("        r." + member.getSimpleName() + " = rs.getInt(\"" + member.getSimpleName() + "\");\n");
+                                                break;
+                                            case BOOLEAN:
+                                                w.write("        r." + member.getSimpleName() + " = rs.getBoolean(\"" + member.getSimpleName() + "\");\n");
+                                                break;
+                                            case ARRAY:
+                                                w.write("        r." + member.getSimpleName() + " = (" + varType.toString() + ")rs.getArray(\"" + member.getSimpleName() + "\").getArray();\n");
+                                                break;
+                                            case DOUBLE:
+                                                w.write("        r." + member.getSimpleName() + " = rs.getDouble(\"" + member.getSimpleName() + "\");\n");
+                                                break;
+                                            case FLOAT:
+                                                w.write("        r." + member.getSimpleName() + " = rs.getFloat(\"" + member.getSimpleName() + "\");\n");
+                                                break;
+                                            case LONG:
+                                                w.write("        r." + member.getSimpleName() + " = rs.getLong(\"" + member.getSimpleName() + "\");\n");
+                                                break;
+                                            case SHORT:
+                                                w.write("        r." + member.getSimpleName() + " = rs.getShort(\"" + member.getSimpleName() + "\");\n");
+                                                break;
+                                            case DECLARED:
+                                                DeclaredType declType = (DeclaredType) varType;
+                                                Element varClassTypeElement = declType.asElement();
+                                                if (varClassTypeElement instanceof TypeElement) {
+                                                    TypeElement varClassType = (TypeElement) varClassTypeElement;
+                                                    String fqClassType = varClassType.getQualifiedName().toString();
 
-                                        if (varClassTypeElement instanceof TypeElement) {
-                                            TypeElement varClassType = (TypeElement) varClassTypeElement;
-                                            String fqClassType = varClassType.getQualifiedName().toString();
-
-                                            if (null == fqClassType) {
-                                                w.write("        r." + member.getSimpleName() + " = (" + varType + ")rs.getObject(\"" + member.getSimpleName() + "\");\n");
-                                            } else {
-                                                switch (fqClassType) {
-                                                    case "java.sql.Date":
-                                                        w.write("        r." + member.getSimpleName() + " = getDate(" + member.getSimpleName() + ");\n");
-                                                        break;
-                                                    case "java.math.BigDecimal":
-                                                        w.write("        r." + member.getSimpleName() + " = getBigDecimal(" + member.getSimpleName() + ");\n");
-                                                        break;
-                                                    case "java.sql.Time":
-                                                        w.write("        r." + member.getSimpleName() + " = getTime(" + member.getSimpleName() + ");\n");
-                                                        break;
-                                                    case "java.lang.String":
-                                                        w.write("        r." + member.getSimpleName() + " = getString(" + member.getSimpleName() + ");\n");
-                                                        break;
-                                                    case "java.sql.Timestamp":
-                                                        w.write("        r." + member.getSimpleName() + " = getTimestamp(" + member.getSimpleName() + ");\n");
-                                                        break;
-                                                    case "java.net.URL":
-                                                        w.write("        r." + member.getSimpleName() + " = getURL(" + member.getSimpleName() + ");\n");
-                                                        break;
-                                                    case "java.sql.Array":
-                                                        w.write("        r." + member.getSimpleName() + " = getArray(" + member.getSimpleName() + ");\n");
-                                                        break;
-                                                    case "java.lang.Boolean":
-                                                        w.write("        r." + member.getSimpleName() + " = getBoolean(" + member.getSimpleName() + ");\n");
-                                                        break;
-                                                    case "java.lang.Integer":
-                                                        w.write("        r." + member.getSimpleName() + " = getnt(" + member.getSimpleName() + ");\n");
-                                                        break;
-                                                    case "java.lang.Double":
-                                                        w.write("        r." + member.getSimpleName() + " = getDouble(" + member.getSimpleName() + ");\n");
-                                                        break;
-                                                    case "java.lang.Float":
-                                                        w.write("        r." + member.getSimpleName() + " = getFloat(" + member.getSimpleName() + ");\n");
-                                                        break;
-                                                    case "java.lang.Long":
-                                                        w.write("        r." + member.getSimpleName() + " = getLong(" + member.getSimpleName() + ");\n");
-                                                        break;
-                                                    case "java.lang.Short":
-                                                        w.write("        r." + member.getSimpleName() + " = getShort(" + member.getSimpleName() + ");\n");
-                                                        break;
-                                                    default:
-                                                        w.write("        pstmt.setObject(idx++, p." + member.getSimpleName() + ");\n");
-                                                        break;
+                                                    if (null == fqClassType) {
+                                                        w.write("        r." + member.getSimpleName() + " = (" + varType + ")rs.getObject(\"" + member.getSimpleName() + "\");\n");
+                                                    } else {
+                                                        switch (fqClassType) {
+                                                            case "java.sql.Date":
+                                                                w.write("        r." + member.getSimpleName() + " = getDate(" + member.getSimpleName() + ");\n");
+                                                                break;
+                                                            case "java.math.BigDecimal":
+                                                                w.write("        r." + member.getSimpleName() + " = getBigDecimal(" + member.getSimpleName() + ");\n");
+                                                                break;
+                                                            case "java.sql.Time":
+                                                                w.write("        r." + member.getSimpleName() + " = getTime(" + member.getSimpleName() + ");\n");
+                                                                break;
+                                                            case "java.lang.String":
+                                                                w.write("        r." + member.getSimpleName() + " = getString(" + member.getSimpleName() + ");\n");
+                                                                break;
+                                                            case "java.sql.Timestamp":
+                                                                w.write("        r." + member.getSimpleName() + " = getTimestamp(" + member.getSimpleName() + ");\n");
+                                                                break;
+                                                            case "java.net.URL":
+                                                                w.write("        r." + member.getSimpleName() + " = getURL(" + member.getSimpleName() + ");\n");
+                                                                break;
+                                                            case "java.sql.Array":
+                                                                w.write("        r." + member.getSimpleName() + " = getArray(" + member.getSimpleName() + ");\n");
+                                                                break;
+                                                            case "java.lang.Boolean":
+                                                                w.write("        r." + member.getSimpleName() + " = getBoolean(" + member.getSimpleName() + ");\n");
+                                                                break;
+                                                            case "java.lang.Integer":
+                                                                w.write("        r." + member.getSimpleName() + " = getnt(" + member.getSimpleName() + ");\n");
+                                                                break;
+                                                            case "java.lang.Double":
+                                                                w.write("        r." + member.getSimpleName() + " = getDouble(" + member.getSimpleName() + ");\n");
+                                                                break;
+                                                            case "java.lang.Float":
+                                                                w.write("        r." + member.getSimpleName() + " = getFloat(" + member.getSimpleName() + ");\n");
+                                                                break;
+                                                            case "java.lang.Long":
+                                                                w.write("        r." + member.getSimpleName() + " = getLong(" + member.getSimpleName() + ");\n");
+                                                                break;
+                                                            case "java.lang.Short":
+                                                                w.write("        r." + member.getSimpleName() + " = getShort(" + member.getSimpleName() + ");\n");
+                                                                break;
+                                                            default:
+                                                                w.write("        pstmt.setObject(idx++, p." + member.getSimpleName() + ");\n");
+                                                                break;
+                                                        }
+                                                    }
                                                 }
-                                            }
+                                                break;
+                                            default:
+                                                break;
                                         }
                                     }
                                 }
