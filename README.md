@@ -133,7 +133,7 @@ public void testMyStatement() {
 }
 ```
 
-Another benefit to first classs statements is that they are much faster for
+Another benefit to first class statements is that they are much faster for
 statements that produce a large number of results or are repetitive. This is due
 to the code generation that becomes possible when the statements exist outside of
 a method. Without the code generation all of the operations are done using Java
