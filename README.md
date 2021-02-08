@@ -123,7 +123,7 @@ Also, since the statement is static and has package visibility it can be used
 in an automated test environment with a database connection to drive different
 test cases for the SQL query directly.
 
-```
+```java
 @Test
 public void testMyStatement() {
     Connection conn = ...
