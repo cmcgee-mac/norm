@@ -16,7 +16,7 @@ Guiding principles:
 * Choose flexible Java interfaces to enable flexible and safe uses of the queries
 
 
-== Simple private queries
+## Simple private queries
 
 Here is a light-weight example of a private query that you can put inline into
 a method.
