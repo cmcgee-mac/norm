@@ -140,7 +140,7 @@ this case we use the built-in NoP (ie. No Parameters) placeholder.
                   + "FROM bar WHERE "
                   + "bar.baz = 123;")
         NormStatement<NoP, r>() {
-        }.executeQuery(dbConn)).forEach ( r -> System.out.println(r.foo) );
+        }.executeQuery(dbConn).forEach ( r -> System.out.println(r.foo) );
 ```
 
 ## Statements without results
