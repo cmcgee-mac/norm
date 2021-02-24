@@ -15,26 +15,28 @@ Guiding principles:
 * Prefer compile time and then initialization time checking over execution time checking to find problems earlier
 * Choose flexible Java interfaces to enable flexible and safe uses of the queries
 
+
+== Simple private queries
+
 Here is a light-weight example of a private query that you can put inline into
 a method.
 
 ```java
     public void performQuery(int baz) throws Exception {
-        class p implements Parameters {
+        class p implements NoP {
             int baz = baz;
         }
 
-        class r implements Result {
+        class r implements NoR {
             int foo;
         }
 
-        try (CloseableIterable<r> rs
-                = new @SQL("SELECT foo "
-                        + "FROM bar WHERE "
-                        + "bar.baz = :baz;") NormStatementWithResult<p, r>() {
-                }.execute(dbConn)) {
-            rs.forEach(r -> System.out.println(r.foo));
-        }
+        new @SQL("SELECT foo "
+                  + "FROM bar WHERE "
+                  + "bar.baz = :baz;")
+        NormStatementt<p, r>() {
+        }.executeQuery(dbConn))
+         .forEach(r -> System.out.println(r.foo));
     }
 ```
 
@@ -44,20 +46,10 @@ for SQL injection. This is one of the built-in safety mechanisms. Substitution i
 done only after the statement has been prepared by the database using named
 tokens (e.g. ":baz") that match fields in the parameters class.
 
-The statement's execute() method returns an Iterable so that a variety of Java
-constructs so that you could use forEach() with a lambda function or even convert
-it to a Java Stream. Be sure to close the Iterable when you are finished
-with it, or encapsulate it in a try-with-resources block.
-
-```java
-rs.forEach( r -> System.out.println(r.foo) );
-
-Integer foo = StreamSupport.stream(rs
-        .spliterator(), false)
-        .map(r-> r.foo)
-        .findFirst()
-        .get();
-```
+The statement's executeQuery() method returns an list of results that iterable
+and streamable as needed from Java. There is no need for verbose and error-prone
+reflection on the result set. The fields can be read directly from the result
+objects.
 
 At execution time the SQL variables are set using the parameters object. The default
 constructor above will set the value to the input of the performQuery() method.
@@ -76,9 +68,9 @@ that depends on a particular column or type in the output.
 
 ## First Class Statements
 
-Inline statements like the one above are best used for simple queries that can
+Private statements like the one above are best used for simple queries that can
 be more easily verified by code inspection and are unlikely to change very often.
-For re-usable and more complex queries you can put them statically into a class
+For re-usable and more complex queries you can add them as statics into a class
  as in the following example.
 
 ```java
@@ -97,55 +89,142 @@ public class Outer {
   }
 
   @SQL("SELECT foo FROM bar WHERE bar.baz = :baz")
-  static class Statement extends NormStatementWithResults<StatementParams,StatementResult> {
+  static class Statement extends NormStatements<StatementParams,StatementResult> {
   }
 
   // Let's save some of the costs of construction each time the statement is executed
   static final Statement STATEMENT = new Statement();
 
   public void performQuery() throws Exception {
-    try (CloseableIterable<StatementResult> rs = STATEMENT.execute(dbConn, new ReqParams().setBaz(100)) {
-      for (StatementResult r: rs) {
-        System.out.println(r.foo);
-      }
+    STATEMENT.executeQuery(dbConn, new ReqParams().setBaz(100))
+      forEach(r -> System.out.println(r.foo)); 
     }
   }
 }
 ```
 
-Once you declare your statement as first class you get additional features
-such as compile-time checking. For example, if you have
+Once you declare your statement as first class (outside of a method) 
+you get additional features such as compile-time checking. For example, if you have
 variables in your SQL that don't match a field in the parameters class then you
 get a compile error. If you have malformed SQL code the compiler will show an error
-This is the recommended approach for more complex and dynamic statements.
+This is the recommended approach for more complex and dynamic statements. It's
+better for a badly formed SQL code to fail at compile time than at runtime.
 
 Also, since the statement is static and has package visibility it can be used
-in an automated test environment with a database connection to drive different
-test cases for the SQL query directly.
+in an integration test environment with a database connection to drive different
+test cases for the SQL statement directly.
 
 ```java
 @Test
 public void testMyStatement() {
     Connection conn = ...
-    try (CloseableIterable<Outer.StatementResult> rs = Outer.STATEMENT.execute(conn, new Outer.StatementParameter().setBaz(1)) {
-        rs.forEach( r -> Assert.assertEquals(1, r.baz) );
-    }
+    Outer.STATEMENT.execute(conn, new Outer.StatementParameter().setBaz(1))
+    .forEach( r -> Assert.assertEquals(1, r.baz) );
 }
 ```
 
-Another benefit to first class statements is that they are much faster for
+Another benefit of first class statements is that they are much faster for
 statements that produce a large number of results or are repetitive. This is due
 to the code generation that becomes possible when the statements exist outside of
 a method. Without the code generation all of the operations are done using Java
-reflection, which can be slower.
+reflection, which can be slower. Those are the tradeoffs
+
+## Statements without parameters
+
+Statements don't always need parameters. Sometimes they are querying for all
+rows in a small table or some static filter that is known to be constant. In
+this case we use the built-in NoP (ie. No Parameters) placeholder.
+
+```java
+        new @SQL("SELECT foo "
+                  + "FROM bar WHERE "
+                  + "bar.baz = 123;")
+        NormStatement<NoP, r>() {
+        }.executeQuery(dbConn)).forEach ( r -> System.out.println(r.foo) );
+```
+
+## Statements without results
+
+Some statements don't produce any results. They could be updates or insert or
+even creating new tables. In these cases you can use the NoR (ie. No Results)
+placeholder so that you don't have to provide an empty class yourself. Also,
+there are other execute methods, such as executeUpdate() and execute() on the
+NormStatement class that you can use to either return the number of rows updated
+or just execute the query caring only if an exception is thrown.
+
+```java
+        int updates =
+          new @SQL("UPDATE baz "
+                  + "SET bar.foo = :foo "
+                  + "WHERE bar.baz = :baz;")
+          NormStatement<p, NoR>() {
+          }.executeUpdate(dbConn, new r().setFoo(1).setBaz(2)));
+
+        System.out.println("Updated " + updates + " rows");
+``
+
+## Force code generation
+
+The code generation can sometimes be aborted if the conditions are not suitable
+for it. This can go unnoticed and can slow down your statement execution. There
+is a way to mark a statement as requiring code generation so that you can get
+compile time errors or runtime errors if the code generation is not in place.
+
+```java
+        int updates =
+          new @SQL("UPDATE baz "
+                  + "SET bar.foo = :foo "
+                  + "WHERE bar.baz = :baz;")
+          @AssertCodeGen // COMPILE ERROR
+          NormStatement<p, NoR>() {
+          }.executeUpdate(dbConn, new r().setFoo(1).setBaz(2)));
+
+        System.out.println("Updated " + updates + " rows");
+```
+
+In this example, you'll find that the code will not compile because the AssertCodeGen
+annotation cannot be applied to the anonymouse inner class. The code generation can't
+work in this case either.
+
+```java
+public class Outer {
+  private static class StatementParams implements Parameters {
+    int baz;
+
+    public StatementParams setBaz(int newBaz) {
+      baz = newBaz;
+      return this;
+    }
+  }
+
+  static class StatementResult implements Result {
+    int foo;
+  }
+
+  @SQL("SELECT foo FROM bar WHERE bar.baz = :baz")
+  @AssertCodeGen
+  static class Statement extends NormStatements<StatementParams,StatementResult> { // COMPILE ERROR
+  }
+}
+```
+
+The code generation generates real, but slightly hidden Java classes to handle the
+setting of parameters and putting the columns of the result set into objects from your
+results Java class. It's able to do this within the scope of the package, but it cannot
+work with private classes. The above case will fail to compile because the parameters
+class is private and the assertion annotation is there. If you remove the assertion this
+statement would be run with reflection, which is slower but able to work with private
+visibility.
 
 ## The ORM Trap
 
-It is also possible to create public classes for the NORM statements, parameters
+It is possible to create public classes for the NORM statements, parameters
 and results, but this is not recommended since it promotes the use of more
 generalized SQL statements instead of case-specific ones that can be customized
 easily without large refactoring operations on your code base. We try to tap into
-the power of SQL directly for each situation.
+the power of SQL directly for each situation. If you find yourself using many
+shared statements and heavily reproducing the structure of your database in Java
+then perhaps an ORM, such as JPA,  will be a better fit for your project.
 
 ## Troubleshooting
 

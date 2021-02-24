@@ -40,7 +40,7 @@ class AbstractStatement<P> {
     String safeSQL; // Package private for testing
     protected Object statementOuter;
 
-    private Class<?> paramsClass;
+    protected Class<?> paramsClass;
     protected Constructor<?> paramsCtor;
 
     private List<Field> slots;
@@ -51,17 +51,41 @@ class AbstractStatement<P> {
         super();
 
         Class<?> c = getClass();
-        Class<?> ec = c.getEnclosingClass();
 
+        java.lang.reflect.Type[] types = ((ParameterizedType) c.getGenericSuperclass()).getActualTypeArguments();
+        if (types == null || types.length > 2) {
+            throw new IllegalArgumentException("NormStatements must extend and provide actual types for the generic variables of the superclass.");
+        }
+
+        // TODO this is a hack that may not work with all compilers
+        try {
+            Field outerThis = getClass().getDeclaredField("this$0");
+            outerThis.setAccessible(true);
+            statementOuter = outerThis.get(this);
+        } catch (IllegalAccessException | IllegalArgumentException | NoSuchFieldException | SecurityException ex) {
+            // Best effort
+            statementOuter = null;
+        }
+
+        paramsClass = (Class<?>) types[0];
+
+        paramsCtor = Arrays.asList(paramsClass.getDeclaredConstructors()).stream()
+                .filter(ctor -> ctor.getParameterCount() == 0 || (ctor.getParameterCount() == 1 && ctor.getParameterTypes()[0].isInstance(statementOuter)))
+                .findFirst()
+                .orElse(null);
+
+        if (paramsCtor != null) {
+            paramsCtor.setAccessible(true);
+        }
+
+        // Check for a handler class to bypass the initialization
+        Class<?> ec = c.getEnclosingClass();
         String handlerClassName = c.getPackage().getName() + "." + (ec != null ? ec.getSimpleName() : "") + c.getSimpleName() + "NormHandler";
 
         try {
             Class<?> h = Class.forName(handlerClassName);
             handler = (StatementHandler) h.newInstance();
             safeSQL = handler.getSafeSQL();
-            statementOuter = null;
-            paramsClass = null;
-            paramsCtor = null;
         } catch (ClassNotFoundException | IllegalAccessException | InstantiationException ex) {
             Logger.getLogger(AbstractStatement.class.getName()).log(Level.INFO,
                     "No handler found " + handlerClassName + " proceeding with reflection", ex);
@@ -81,6 +105,11 @@ class AbstractStatement<P> {
 
         if (handler != null) {
             handler.setParameters(p, pstmt, c);
+            return pstmt;
+        }
+
+        // This is the placeholder
+        if (NoP.class.equals(paramsClass)) {
             return pstmt;
         }
 
@@ -145,32 +174,6 @@ class AbstractStatement<P> {
         }
 
         String sqlStr = sql[0].value();
-
-        java.lang.reflect.Type[] types = ((ParameterizedType) c.getGenericSuperclass()).getActualTypeArguments();
-        if (types == null || types.length > 2) {
-            throw new IllegalArgumentException("NormStatements must extend and provide actual types for the generic variables of the superclass.");
-        }
-
-        // TODO this is a hack that may not work with all compilers
-        try {
-            Field outerThis = getClass().getDeclaredField("this$0");
-            outerThis.setAccessible(true);
-            statementOuter = outerThis.get(this);
-        } catch (IllegalAccessException | IllegalArgumentException | NoSuchFieldException | SecurityException ex) {
-            // Best effort
-            statementOuter = null;
-        }
-
-        paramsClass = (Class<?>) types[0];
-
-        paramsCtor = Arrays.asList(paramsClass.getDeclaredConstructors()).stream()
-                .filter(ctor -> ctor.getParameterCount() == 0 || (ctor.getParameterCount() == 1 && ctor.getParameterTypes()[0].isInstance(statementOuter)))
-                .findFirst()
-                .orElse(null);
-
-        if (paramsCtor != null) {
-            paramsCtor.setAccessible(true);
-        }
 
         Set<String> dereferencedParms = new HashSet<>();
         Set<String> referencedParms = new HashSet<>();

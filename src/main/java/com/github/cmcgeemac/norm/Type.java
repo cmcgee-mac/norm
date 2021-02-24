@@ -12,7 +12,9 @@ import java.lang.annotation.Target;
 
 /**
  * Use the Type annotation to add native database type information to
- * {@link Parameters} fields.
+ * {@link Parameters} fields. This is a required tag when the field of a
+ * parameter or result has an array type so that sufficient database type
+ * information can be provided.
  */
 @Retention(value = RetentionPolicy.RUNTIME)
 @Target(value = ElementType.FIELD)

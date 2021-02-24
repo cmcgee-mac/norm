@@ -6,7 +6,8 @@
 package com.github.cmcgeemac.norm;
 
 /**
- * Marker interface for classes that define the result structure of a statement.
+ * Marker interface for classes that define the result structure of a statement
+ * or placeholder if there are no results.
  */
-public interface Result {
+public interface NoR {
 }

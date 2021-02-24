@@ -6,7 +6,8 @@
 package com.github.cmcgeemac.norm;
 
 /**
- * Marker interface for a class the defines the parameters of a NORM statement.
+ * Marker interface for a class the defines the parameters of a NORM statement
+ * and also a placeholder for when there are no parameters.
  */
-public interface Parameters {
+public interface NoP {
 }

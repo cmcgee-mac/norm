@@ -16,7 +16,7 @@ public class TestStatementSQLValidation {
 
     @Test
     public void testVariablesValidation() throws Exception {
-        class p implements Parameters {
+        class p implements NoP {
 
             int bar = 1;
             int newBaz = 100;
@@ -24,12 +24,12 @@ public class TestStatementSQLValidation {
 
         // Variables line up here
         Assert.assertEquals("UPDATE foo SET bar = ? WHERE foo.bar = ?",
-                new @SQL("UPDATE foo SET bar = :newBaz WHERE foo.bar = :bar") NormStatement<p>() {
+                new @SQL("UPDATE foo SET bar = :newBaz WHERE foo.bar = :bar") NormStatement<p, NoR>() {
         }.safeSQL);
 
         // One of the variables could not be found in the parameters class
         try {
-            new @SQL("UPDATE foo SET bar = :newBar WHERE foo.bar = :bar") NormStatement<p>() {
+            new @SQL("UPDATE foo SET bar = :newBar WHERE foo.bar = :bar") NormStatement<p, NoR>() {
             };
             Assert.fail("Missing variable not detected");
         } catch (Exception e) {
@@ -59,7 +59,7 @@ public class TestStatementSQLValidation {
         try {
             // The parameter class has some extra variables
             try {
-                new @SQL("UPDATE foo SET bar = 1 WHERE foo.bar = :bar") NormStatement<p>() {
+                new @SQL("UPDATE foo SET bar = 1 WHERE foo.bar = :bar") NormStatement<p, NoR>() {
                 };
 
             } catch (Exception e) {

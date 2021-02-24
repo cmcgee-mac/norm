@@ -90,8 +90,7 @@ public class SQLStatementProcessor extends AbstractProcessor {
                     DeclaredType statementSuperType = (DeclaredType) superClass;
                     Element statementSuperTypeElem = statementSuperType.asElement();
 
-                    if (!statementSuperTypeElem.getSimpleName().contentEquals("NormStatement")
-                            && !statementSuperTypeElem.getSimpleName().contentEquals("NormStatementWithResult")) {
+                    if (!statementSuperTypeElem.getSimpleName().contentEquals("NormStatement")) {
 
                         messager.printMessage(Diagnostic.Kind.ERROR,
                                 "@SQL annotation applies to NORM statement subclasses: " + statementSuperTypeElem.getSimpleName(),
@@ -108,8 +107,9 @@ public class SQLStatementProcessor extends AbstractProcessor {
 
                     boolean codeGen = true;
 
-                    Element paramsDeclType = null; // Required for all NORM statements
-                    Element resultsDeclType = null; // Applies only to statements with results
+                    Element paramsDeclType = null;
+                    Element resultsDeclType = null;
+                    int idx = 0;
 
                     for (TypeMirror arg : statementSuperType.getTypeArguments()) {
                         if (arg instanceof DeclaredType) {
@@ -117,44 +117,57 @@ public class SQLStatementProcessor extends AbstractProcessor {
 
                             Element declTypeParamElem = declTypeParam.asElement();
 
-                            if (paramsDeclType == null) {
+                            if (idx == 0) {
+                                idx++;
+
                                 paramsDeclType = declTypeParamElem;
 
                                 // Further checks are used on the parameters
                                 if (declTypeParamElem instanceof TypeElement) {
                                     TypeElement declTypeParamTypElem = (TypeElement) declTypeParamElem;
 
-                                    for (Element member : processingEnv.getElementUtils().getAllMembers(declTypeParamTypElem)) {
-                                        if (member instanceof VariableElement) {
-                                            VariableElement varMember = (VariableElement) member;
+                                    // Check if this is the Result placeholder interface (ie. no results).
+                                    boolean isPlaceholder = false;
 
-                                            if (varMember.getModifiers().contains(Modifier.PRIVATE)) {
-                                                messager.printMessage(Diagnostic.Kind.NOTE,
-                                                        "The statement parameter type " + declTypeParamTypElem.getQualifiedName() + " has a private field with name " + member.getSimpleName() + ", which makes it impossible to code generate. Falling back to runtime reflection.",
-                                                        statementElement
-                                                );
-                                                codeGen = false;
-                                            }
+                                    if (paramsDeclType.getSimpleName().toString().equals("NoP")
+                                            && processingEnv.getElementUtils().getPackageOf(declTypeParamTypElem).getQualifiedName().toString().equals(NoP.class.getPackage().getName())) {
+                                        isPlaceholder = true;
+                                        paramsDeclType = null;
+                                    }
 
-                                            String vName = varMember.getSimpleName().toString();
+                                    if (!isPlaceholder) {
+                                        for (Element member : processingEnv.getElementUtils().getAllMembers(declTypeParamTypElem)) {
+                                            if (member instanceof VariableElement) {
+                                                VariableElement varMember = (VariableElement) member;
 
-                                            if (!referencedParms.contains(vName)) {
-                                                messager.printMessage(Diagnostic.Kind.WARNING,
-                                                        "The statement parameter type " + declTypeParamTypElem.getQualifiedName() + " has field with name " + member.getSimpleName() + " but the @SQL query doesn't have a matching variable :" + member.getSimpleName(),
-                                                        statementElement
-                                                );
-                                            } else {
-                                                dereferencedParms.add(vName);
-                                            }
-
-                                            TypeMirror varType = member.asType();
-                                            if (varType.getKind() == TypeKind.ARRAY) {
-                                                com.github.cmcgeemac.norm.Type t = varMember.getAnnotation(com.github.cmcgeemac.norm.Type.class);
-                                                if (t == null) {
-                                                    messager.printMessage(Diagnostic.Kind.ERROR,
-                                                            "The statement parameter type " + declTypeParamTypElem.getQualifiedName() + " has a field with name " + member.getSimpleName() + " that is an array type but specifies no @Type annotation with the database type.",
-                                                            statementElement);
+                                                if (varMember.getModifiers().contains(Modifier.PRIVATE)) {
+                                                    messager.printMessage(Diagnostic.Kind.NOTE,
+                                                            "The statement parameter type " + declTypeParamTypElem.getQualifiedName() + " has a private field with name " + member.getSimpleName() + ", which makes it impossible to code generate. Falling back to runtime reflection.",
+                                                            statementElement
+                                                    );
                                                     codeGen = false;
+                                                }
+
+                                                String vName = varMember.getSimpleName().toString();
+
+                                                if (!referencedParms.contains(vName)) {
+                                                    messager.printMessage(Diagnostic.Kind.WARNING,
+                                                            "The statement parameter type " + declTypeParamTypElem.getQualifiedName() + " has field with name " + member.getSimpleName() + " but the @SQL query doesn't have a matching variable :" + member.getSimpleName(),
+                                                            statementElement
+                                                    );
+                                                } else {
+                                                    dereferencedParms.add(vName);
+                                                }
+
+                                                TypeMirror varType = member.asType();
+                                                if (varType.getKind() == TypeKind.ARRAY) {
+                                                    com.github.cmcgeemac.norm.Type t = varMember.getAnnotation(com.github.cmcgeemac.norm.Type.class);
+                                                    if (t == null) {
+                                                        messager.printMessage(Diagnostic.Kind.ERROR,
+                                                                "The statement parameter type " + declTypeParamTypElem.getQualifiedName() + " has a field with name " + member.getSimpleName() + " that is an array type but specifies no @Type annotation with the database type.",
+                                                                statementElement);
+                                                        codeGen = false;
+                                                    }
                                                 }
                                             }
                                         }
@@ -168,16 +181,27 @@ public class SQLStatementProcessor extends AbstractProcessor {
                                 if (declTypeParamElem instanceof TypeElement) {
                                     TypeElement declTypeParamTypElem = (TypeElement) declTypeParamElem;
 
-                                    for (Element member : processingEnv.getElementUtils().getAllMembers(declTypeParamTypElem)) {
-                                        if (member instanceof VariableElement) {
-                                            VariableElement varMember = (VariableElement) member;
+                                    // Check if this is the Result placeholder interface (ie. no results).
+                                    boolean isPlaceholder = false;
 
-                                            if (varMember.getModifiers().contains(Modifier.PRIVATE)) {
-                                                messager.printMessage(Diagnostic.Kind.NOTE,
-                                                        "The statement result type " + declTypeParamTypElem.getQualifiedName() + " has a private field with name " + member.getSimpleName() + ", which makes it impossible to code generate. Falling back to runtime reflection.",
-                                                        statementElement
-                                                );
-                                                codeGen = false;
+                                    if (resultsDeclType.getSimpleName().toString().equals("NoR")
+                                            && processingEnv.getElementUtils().getPackageOf(declTypeParamTypElem).getQualifiedName().toString().equals(NoR.class.getPackage().getName())) {
+                                        isPlaceholder = true;
+                                        resultsDeclType = null;
+                                    }
+
+                                    if (!isPlaceholder) {
+                                        for (Element member : processingEnv.getElementUtils().getAllMembers(declTypeParamTypElem)) {
+                                            if (member instanceof VariableElement) {
+                                                VariableElement varMember = (VariableElement) member;
+
+                                                if (varMember.getModifiers().contains(Modifier.PRIVATE)) {
+                                                    messager.printMessage(Diagnostic.Kind.NOTE,
+                                                            "The statement result type " + declTypeParamTypElem.getQualifiedName() + " has a private field with name " + member.getSimpleName() + ", which makes it impossible to code generate. Falling back to runtime reflection.",
+                                                            statementElement
+                                                    );
+                                                    codeGen = false;
+                                                }
                                             }
                                         }
                                     }
@@ -211,9 +235,9 @@ public class SQLStatementProcessor extends AbstractProcessor {
                         // Find the enclosing class, if any
                         Element cls = (statementElement.getEnclosingElement().getKind() == ElementKind.CLASS) ? statementElement.getEnclosingElement() : null;
 
-                        String fqParametersClass = ((PackageElement) pkg).getQualifiedName() + "." + (cls != null ? cls.getSimpleName() + "." : "") + paramsDeclType.getSimpleName();
+                        String fqParametersClass = paramsDeclType != null ? ((PackageElement) pkg).getQualifiedName() + "." + (cls != null ? cls.getSimpleName() + "." : "") + paramsDeclType.getSimpleName() : "com.github.cmcgeemac.norm.NoP";
 
-                        String fqResultsClass = resultsDeclType != null ? ((PackageElement) pkg).getQualifiedName() + "." + (cls != null ? cls.getSimpleName() + "." : "") + resultsDeclType.getSimpleName() : "Object";
+                        String fqResultsClass = resultsDeclType != null ? ((PackageElement) pkg).getQualifiedName() + "." + (cls != null ? cls.getSimpleName() + "." : "") + resultsDeclType.getSimpleName() : "com.github.cmcgeemac.norm.NoR";
 
                         String handlerClass = "" + (cls != null ? cls.getSimpleName() : "") + statementElement.getSimpleName() + "NormHandler";
                         String pkgName = ((PackageElement) pkg).getQualifiedName().toString();
@@ -252,117 +276,119 @@ public class SQLStatementProcessor extends AbstractProcessor {
                         w.write("    public void setParameters(" + fqParametersClass + " p, PreparedStatement pstmt, Connection conn) throws SQLException {\n");
                         w.write("        int idx = 1;\n");
 
-                        Matcher m = VARIABLE_PATTERN.matcher(safeSQL);
-                        while (m.find()) {
-                            for (Element member : this.processingEnv.getElementUtils().getAllMembers((TypeElement) paramsDeclType)) {
-                                if (!member.getSimpleName().toString().equals(m.group(1))) {
-                                    continue;
-                                }
+                        if (paramsDeclType != null) {
+                            Matcher m = VARIABLE_PATTERN.matcher(safeSQL);
+                            while (m.find()) {
+                                for (Element member : this.processingEnv.getElementUtils().getAllMembers((TypeElement) paramsDeclType)) {
+                                    if (!member.getSimpleName().toString().equals(m.group(1))) {
+                                        continue;
+                                    }
 
-                                if (member.getKind() == ElementKind.FIELD) {
-                                    TypeMirror varType = member.asType();
+                                    if (member.getKind() == ElementKind.FIELD) {
+                                        TypeMirror varType = member.asType();
 
-                                    if (null == varType.getKind()) {
-                                        messager.printMessage(Diagnostic.Kind.ERROR,
-                                                "SQL statement references the following variables from parameters class with a type that cannot be mapped to JDBC: " + member.getSimpleName(),
-                                                statementElement);
-                                    } else {
-                                        switch (varType.getKind()) {
-                                            case INT:
-                                                w.write("        pstmt.setInt(idx++, p." + member.getSimpleName() + ");\n");
-                                                break;
-                                            case BOOLEAN:
-                                                w.write("        pstmt.setBoolean(idx++, p." + member.getSimpleName() + ");\n");
-                                                break;
-                                            case ARRAY:
-                                                // FIXME what about primitive arrays
-                                                com.github.cmcgeemac.norm.Type arrType = member.getAnnotation(com.github.cmcgeemac.norm.Type.class);
-                                                if (arrType != null) {
-                                                    w.write("        pstmt.setArray(idx++, conn.createArrayOf(\"" + arrType.value() + "\", p." + member.getSimpleName() + "));\n");
-                                                }
-                                                break;
-                                            case DOUBLE:
-                                                w.write("          pstmt.setDouble(idx++, p." + member.getSimpleName() + ");\n");
-                                                break;
-                                            case FLOAT:
-                                                w.write("          pstmt.setFloat(idx++, p." + member.getSimpleName() + ");\n");
-                                                break;
-                                            case LONG:
-                                                w.write("        pstmt.setLong(idx++, p." + member.getSimpleName() + ");\n");
-                                                break;
-                                            case SHORT:
-                                                w.write("        pstmt.setShort(idx++, p." + member.getSimpleName() + ");\n");
-                                                break;
-                                            case DECLARED:
-                                                DeclaredType declType = (DeclaredType) varType;
-                                                Element varClassTypeElement = declType.asElement();
+                                        if (null == varType.getKind()) {
+                                            messager.printMessage(Diagnostic.Kind.ERROR,
+                                                    "SQL statement references the following variables from parameters class with a type that cannot be mapped to JDBC: " + member.getSimpleName(),
+                                                    statementElement);
+                                        } else {
+                                            switch (varType.getKind()) {
+                                                case INT:
+                                                    w.write("        pstmt.setInt(idx++, p." + member.getSimpleName() + ");\n");
+                                                    break;
+                                                case BOOLEAN:
+                                                    w.write("        pstmt.setBoolean(idx++, p." + member.getSimpleName() + ");\n");
+                                                    break;
+                                                case ARRAY:
+                                                    // FIXME what about primitive arrays
+                                                    com.github.cmcgeemac.norm.Type arrType = member.getAnnotation(com.github.cmcgeemac.norm.Type.class);
+                                                    if (arrType != null) {
+                                                        w.write("        pstmt.setArray(idx++, conn.createArrayOf(\"" + arrType.value() + "\", p." + member.getSimpleName() + "));\n");
+                                                    }
+                                                    break;
+                                                case DOUBLE:
+                                                    w.write("          pstmt.setDouble(idx++, p." + member.getSimpleName() + ");\n");
+                                                    break;
+                                                case FLOAT:
+                                                    w.write("          pstmt.setFloat(idx++, p." + member.getSimpleName() + ");\n");
+                                                    break;
+                                                case LONG:
+                                                    w.write("        pstmt.setLong(idx++, p." + member.getSimpleName() + ");\n");
+                                                    break;
+                                                case SHORT:
+                                                    w.write("        pstmt.setShort(idx++, p." + member.getSimpleName() + ");\n");
+                                                    break;
+                                                case DECLARED:
+                                                    DeclaredType declType = (DeclaredType) varType;
+                                                    Element varClassTypeElement = declType.asElement();
 
-                                                if (varClassTypeElement instanceof TypeElement) {
-                                                    TypeElement varClassType = (TypeElement) varClassTypeElement;
-                                                    String fqClassType = varClassType.getQualifiedName().toString();
+                                                    if (varClassTypeElement instanceof TypeElement) {
+                                                        TypeElement varClassType = (TypeElement) varClassTypeElement;
+                                                        String fqClassType = varClassType.getQualifiedName().toString();
 
-                                                    if (null == fqClassType) {
-                                                        w.write("        pstmt.setObject(idx++, p." + member.getSimpleName() + ");\n");
-                                                    } else {
-                                                        switch (fqClassType) {
-                                                            case "java.sql.Date":
-                                                                w.write("        pstmt.setDate(idx++, p." + member.getSimpleName() + ");\n");
-                                                                break;
-                                                            case "java.math.BigDecimal":
-                                                                w.write("        pstmt.setBigDecimal(idx++, p." + member.getSimpleName() + ");\n");
-                                                                break;
-                                                            case "java.sql.Time":
-                                                                w.write("        pstmt.setTime(idx++, p." + member.getSimpleName() + ");\n");
-                                                                break;
-                                                            case "java.lang.String":
-                                                                w.write("        pstmt.setString(idx++, p." + member.getSimpleName() + ");\n");
-                                                                break;
-                                                            case "java.sql.Timestamp":
-                                                                w.write("        pstmt.setTimestamp(idx++, p." + member.getSimpleName() + ");\n");
-                                                                break;
-                                                            case "java.net.URL":
-                                                                w.write("        pstmt.setURL(idx++, p." + member.getSimpleName() + ");\n");
-                                                                break;
-                                                            case "java.sql.Array":
-                                                                w.write("        pstmt.setArray(idx++, p." + member.getSimpleName() + ");\n");
-                                                                break;
-                                                            case "java.lang.Boolean":
-                                                                w.write("        pstmt.setBoolean(idx++, p." + member.getSimpleName() + ");\n");
-                                                                break;
-                                                            case "java.lang.Integer":
-                                                                w.write("        pstmt.setInt(idx++, p." + member.getSimpleName() + ");\n");
-                                                                break;
-                                                            case "java.lang.Double":
-                                                                w.write("        pstmt.setDouble(idx++, p." + member.getSimpleName() + ");\n");
-                                                                break;
-                                                            case "java.lang.Float":
-                                                                w.write("        pstmt.setFloat(idx++, p." + member.getSimpleName() + ");\n");
-                                                                break;
-                                                            case "java.lang.Long":
-                                                                w.write("        pstmt.setLong(idx++, p." + member.getSimpleName() + ");\n");
-                                                                break;
-                                                            case "java.lang.Short":
-                                                                w.write("        pstmt.setShort(idx++, p." + member.getSimpleName() + ");\n");
-                                                                break;
-                                                            default:
-                                                                w.write("        pstmt.setObject(idx++, p." + member.getSimpleName() + ");\n");
-                                                                break;
+                                                        if (null == fqClassType) {
+                                                            w.write("        pstmt.setObject(idx++, p." + member.getSimpleName() + ");\n");
+                                                        } else {
+                                                            switch (fqClassType) {
+                                                                case "java.sql.Date":
+                                                                    w.write("        pstmt.setDate(idx++, p." + member.getSimpleName() + ");\n");
+                                                                    break;
+                                                                case "java.math.BigDecimal":
+                                                                    w.write("        pstmt.setBigDecimal(idx++, p." + member.getSimpleName() + ");\n");
+                                                                    break;
+                                                                case "java.sql.Time":
+                                                                    w.write("        pstmt.setTime(idx++, p." + member.getSimpleName() + ");\n");
+                                                                    break;
+                                                                case "java.lang.String":
+                                                                    w.write("        pstmt.setString(idx++, p." + member.getSimpleName() + ");\n");
+                                                                    break;
+                                                                case "java.sql.Timestamp":
+                                                                    w.write("        pstmt.setTimestamp(idx++, p." + member.getSimpleName() + ");\n");
+                                                                    break;
+                                                                case "java.net.URL":
+                                                                    w.write("        pstmt.setURL(idx++, p." + member.getSimpleName() + ");\n");
+                                                                    break;
+                                                                case "java.sql.Array":
+                                                                    w.write("        pstmt.setArray(idx++, p." + member.getSimpleName() + ");\n");
+                                                                    break;
+                                                                case "java.lang.Boolean":
+                                                                    w.write("        pstmt.setBoolean(idx++, p." + member.getSimpleName() + ");\n");
+                                                                    break;
+                                                                case "java.lang.Integer":
+                                                                    w.write("        pstmt.setInt(idx++, p." + member.getSimpleName() + ");\n");
+                                                                    break;
+                                                                case "java.lang.Double":
+                                                                    w.write("        pstmt.setDouble(idx++, p." + member.getSimpleName() + ");\n");
+                                                                    break;
+                                                                case "java.lang.Float":
+                                                                    w.write("        pstmt.setFloat(idx++, p." + member.getSimpleName() + ");\n");
+                                                                    break;
+                                                                case "java.lang.Long":
+                                                                    w.write("        pstmt.setLong(idx++, p." + member.getSimpleName() + ");\n");
+                                                                    break;
+                                                                case "java.lang.Short":
+                                                                    w.write("        pstmt.setShort(idx++, p." + member.getSimpleName() + ");\n");
+                                                                    break;
+                                                                default:
+                                                                    w.write("        pstmt.setObject(idx++, p." + member.getSimpleName() + ");\n");
+                                                                    break;
+                                                            }
                                                         }
                                                     }
-                                                }
-                                                break;
-                                            default:
-                                                messager.printMessage(Diagnostic.Kind.ERROR,
-                                                        "SQL statement references the following variables from parameters class with a type that cannot be mapped to JDBC: " + member.getSimpleName(),
-                                                        statementElement);
-                                                break;
+                                                    break;
+                                                default:
+                                                    messager.printMessage(Diagnostic.Kind.ERROR,
+                                                            "SQL statement references the following variables from parameters class with a type that cannot be mapped to JDBC: " + member.getSimpleName(),
+                                                            statementElement);
+                                                    break;
+                                            }
                                         }
                                     }
                                 }
-                            }
 
-                            safeSQL = m.replaceFirst("?");
-                            m = VARIABLE_PATTERN.matcher(safeSQL);
+                                safeSQL = m.replaceFirst("?");
+                                m = VARIABLE_PATTERN.matcher(safeSQL);
+                            }
                         }
                         w.write("    }\n");
                         w.write("\n");

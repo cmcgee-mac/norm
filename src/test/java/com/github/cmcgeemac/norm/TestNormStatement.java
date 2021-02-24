@@ -11,7 +11,6 @@ import org.junit.Assert;
 import org.junit.Test;
 import org.mockito.Mockito;
 
-
 public class TestNormStatement {
 
     @Test
@@ -21,12 +20,13 @@ public class TestNormStatement {
         Mockito.when(c.prepareStatement(Mockito.any())).thenReturn(pstmt);
         Mockito.when(pstmt.executeUpdate()).thenReturn(1);
 
-        class p implements Parameters {
+        class p implements NoP {
+
             int bar = 1;
             int newBaz = 100;
         }
 
-        if (new @SQL("UPDATE foo SET baz = :newBaz WHERE foo.bar = :bar;") NormStatement<p>() {
+        if (new @SQL("UPDATE foo SET baz = :newBaz WHERE foo.bar = :bar;") NormStatement<p, NoR>() {
         }.executeUpdate(c) != 1) {
             Assert.fail("Incorrect number of rows updated. Please try again.");
         }
@@ -39,7 +39,8 @@ public class TestNormStatement {
         Mockito.when(c.prepareStatement(Mockito.any())).thenReturn(pstmt);
         Mockito.when(pstmt.executeUpdate()).thenReturn(1);
 
-        class p implements Parameters {
+        class p implements NoP {
+
             int newBaz;
             int bar;
         }
@@ -47,14 +48,14 @@ public class TestNormStatement {
         if (new @SQL(""
                 + "UPDATE foo "
                 + "SET baz = :newBaz "
-                + "WHERE foo.bar = :bar;") NormStatement<p>() {
+                + "WHERE foo.bar = :bar;") NormStatement<p, NoR>() {
         }.executeUpdate(c) != 1) {
             Assert.fail("Incorrect number of rows updated. Please try again.");
         }
 
     }
 
-    private static class UpdateStatementParameters implements Parameters {
+    private static class UpdateStatementParameters implements NoP {
 
         int baz;
     }
@@ -63,7 +64,7 @@ public class TestNormStatement {
             "SELECT foo "
             + "FROM bar "
             + "WHERE bar.baz = :baz;")
-    private static class UpdateStatement extends NormStatement<UpdateStatementParameters> {
+    private static class UpdateStatement extends NormStatement<UpdateStatementParameters, NoR> {
     }
 
     // Let's save some construction costs each time this is run

@@ -12,7 +12,7 @@ import org.junit.Assert;
 import org.junit.Test;
 import org.mockito.Mockito;
 
-public class TestNormStatementWithResult {
+public class TestNormStatementNoParameters {
 
     @Test
     public void testInlineConstruction() throws Exception {
@@ -24,11 +24,6 @@ public class TestNormStatementWithResult {
         Mockito.when(resultSet.next()).thenReturn(true).thenReturn(false);
         Mockito.when(resultSet.getInt(Mockito.any())).thenReturn(1);
 
-        class p implements NoP {
-
-            int baz = 100;
-        }
-
         class r implements NoR {
 
             int foo;
@@ -36,12 +31,10 @@ public class TestNormStatementWithResult {
 
         for (r r : new @SQL("SELECT foo "
                 + "FROM bar WHERE "
-                + "bar.baz = :baz;") NormStatement<p, r>() {
+                + "bar.baz = 'abc'") NormStatement<NoP, r>() {
         }.executeQuery(c)) {
             Assert.assertEquals(1, r.foo);
         }
-
-        Mockito.verify(pstmt).setInt(1, 100);
     }
 
     @Test
@@ -54,11 +47,6 @@ public class TestNormStatementWithResult {
         Mockito.when(resultSet.next()).thenReturn(true).thenReturn(false);
         Mockito.when(resultSet.getInt(Mockito.anyString())).thenReturn(1);
 
-        class p implements NoP {
-
-            int baz = 100;
-        }
-
         class r implements NoR {
 
             int foo;
@@ -67,12 +55,10 @@ public class TestNormStatementWithResult {
         for (r r : new @SQL(
                 "SELECT foo "
                 + "FROM bar "
-                + "WHERE bar.baz = :baz;") NormStatement<p, r>() {
+                + "WHERE bar.baz = 'abc'") NormStatement<NoP, r>() {
         }.executeQuery(c)) {
             Assert.assertEquals(1, r.foo);
         }
-
-        Mockito.verify(pstmt).setInt(1, 100);
     }
 
     @Test
@@ -85,31 +71,21 @@ public class TestNormStatementWithResult {
         Mockito.when(resultSet.next()).thenReturn(true).thenReturn(false);
         Mockito.when(resultSet.getInt(Mockito.anyString())).thenReturn(1);
 
-        class p implements NoP {
-
-            int baz = 100;
-        }
-
         class r implements NoR {
 
             int foo;
         }
 
-        Integer foo;
-
-        foo = new @SQL(
+        Integer foo = new @SQL(
                 "SELECT foo "
                 + "FROM bar "
-                + "WHERE bar.baz = :baz;") NormStatement<p, r>() {
-        }.executeQuery(c).stream().map(r -> r.foo).findFirst().get();
+                + "WHERE bar.baz = 'abc'") NormStatement<NoP, r>() {
+        }.executeQuery(c).stream()
+                .map(l -> l.foo)
+                .findFirst()
+                .get();
 
         Assert.assertNotNull(foo);
-        Mockito.verify(pstmt).setInt(1, 100);
-    }
-
-    private static class QueryParameters implements NoP {
-
-        Integer baz = 100;
     }
 
     private static class QueryResult implements NoR {
@@ -120,8 +96,8 @@ public class TestNormStatementWithResult {
     @SQL(
             "SELECT foo "
             + "FROM bar "
-            + "WHERE bar.baz = :baz;")
-    private static class Query extends NormStatement<QueryParameters, QueryResult> {
+            + "WHERE bar.baz = 'abc'")
+    private static class Query extends NormStatement<NoP, QueryResult> {
     }
 
     // Save construction costs each time this is run
@@ -138,8 +114,6 @@ public class TestNormStatementWithResult {
         Mockito.when(resultSet.getInt(Mockito.anyString())).thenReturn(1);
 
         QUERY.executeQuery(c).forEach(r -> Assert.assertEquals((Integer) 1, r.foo));
-
-        Mockito.verify(pstmt).setInt(1, 100);
     }
 
 }
