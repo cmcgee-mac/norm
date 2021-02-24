@@ -35,7 +35,7 @@ a method.
                   + "FROM bar WHERE "
                   + "bar.baz = :baz;")
         NormStatementt<p, r>() {
-        }.executeQuery(dbConn))
+        }.executeQuery(dbConn)
          .forEach(r -> System.out.println(r.foo));
     }
 ```
@@ -97,7 +97,7 @@ public class Outer {
 
   public void performQuery() throws Exception {
     STATEMENT.executeQuery(dbConn, new ReqParams().setBaz(100))
-      forEach(r -> System.out.println(r.foo)); 
+      .forEach(r -> System.out.println(r.foo)); 
     }
   }
 }
@@ -119,7 +119,7 @@ test cases for the SQL statement directly.
 public void testMyStatement() {
     Connection conn = ...
     Outer.STATEMENT.execute(conn, new Outer.StatementParameter().setBaz(1))
-    .forEach( r -> Assert.assertEquals(1, r.baz) );
+      .forEach( r -> Assert.assertEquals(1, r.baz) );
 }
 ```
 
