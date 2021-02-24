@@ -75,7 +75,7 @@ For re-usable and more complex queries you can add them as statics into a class
 
 ```java
 public class Outer {
-  static class StatementParams implements Parameters {
+  static class StatementParams implements NoP {
     int baz;
 
     public StatementParams setBaz(int newBaz) {
@@ -84,7 +84,7 @@ public class Outer {
     }
   }
 
-  static class StatementResult implements Result {
+  static class StatementResult implements NoR {
     int foo;
   }
 
@@ -188,7 +188,7 @@ work in this case either.
 
 ```java
 public class Outer {
-  private static class StatementParams implements Parameters {
+  private static class StatementParams implements NoP {
     int baz;
 
     public StatementParams setBaz(int newBaz) {
@@ -197,7 +197,7 @@ public class Outer {
     }
   }
 
-  static class StatementResult implements Result {
+  static class StatementResult implements NoR {
     int foo;
   }
 
