@@ -161,7 +161,7 @@ or just execute the query caring only if an exception is thrown.
           }.executeUpdate(dbConn, new r().setFoo(1).setBaz(2)));
 
         System.out.println("Updated " + updates + " rows");
-``
+```
 
 ## Force code generation
 
