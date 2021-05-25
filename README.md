@@ -22,7 +22,7 @@ Here is a light-weight example of a private query that you can put inline into
 a method.
 
 ```java
-    public void performQuery(int baz) throws Exception {
+    public void performQuery(int baz) {
         class p implements NoP {
             int baz = baz;
         }
@@ -95,7 +95,7 @@ public class Outer {
   // Let's save some of the costs of construction each time the statement is executed
   static final Statement STATEMENT = new Statement();
 
-  public void performQuery() throws Exception {
+  public void performQuery() {
     STATEMENT.executeQuery(dbConn, new ReqParams().setBaz(100))
       .forEach(r -> System.out.println(r.foo)); 
     }
