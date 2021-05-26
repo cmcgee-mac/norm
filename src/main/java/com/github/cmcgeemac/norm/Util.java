@@ -29,7 +29,7 @@ class Util {
 
     interface jdbcHandler {
 
-        public String handle(JdbcNamedParameter param);
+        String handle(JdbcNamedParameter param);
     }
 
     static void visitJdbcParameters(Statement statement, jdbcHandler jdbcHandler) {

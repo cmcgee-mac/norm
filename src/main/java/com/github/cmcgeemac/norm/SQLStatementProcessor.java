@@ -161,7 +161,7 @@ public class SQLStatementProcessor extends AbstractProcessor {
 
                                                 TypeMirror varType = member.asType();
                                                 if (varType.getKind() == TypeKind.ARRAY) {
-                                                    com.github.cmcgeemac.norm.Type t = varMember.getAnnotation(com.github.cmcgeemac.norm.Type.class);
+                                                    Type t = varMember.getAnnotation(Type.class);
                                                     if (t == null) {
                                                         messager.printMessage(Diagnostic.Kind.ERROR,
                                                                 "The statement parameter type " + declTypeParamTypElem.getQualifiedName() + " has a field with name " + member.getSimpleName() + " that is an array type but specifies no @Type annotation with the database type.",
@@ -301,7 +301,7 @@ public class SQLStatementProcessor extends AbstractProcessor {
                                                     break;
                                                 case ARRAY:
                                                     // FIXME what about primitive arrays
-                                                    com.github.cmcgeemac.norm.Type arrType = member.getAnnotation(com.github.cmcgeemac.norm.Type.class);
+                                                    Type arrType = member.getAnnotation(Type.class);
                                                     if (arrType != null) {
                                                         w.write("        pstmt.setArray(idx++, conn.createArrayOf(\"" + arrType.value() + "\", p." + member.getSimpleName() + "));\n");
                                                     }

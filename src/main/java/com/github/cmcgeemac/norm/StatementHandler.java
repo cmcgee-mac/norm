@@ -16,10 +16,10 @@ import java.sql.SQLException;
  */
 public interface StatementHandler<P, R> {
 
-    public String getSafeSQL();
+    String getSafeSQL();
 
-    public void setParameters(P p, PreparedStatement pstmt, Connection conn) throws SQLException;
+    void setParameters(P p, PreparedStatement pstmt, Connection conn) throws SQLException;
 
-    public void result(R r, ResultSet rs) throws SQLException;
+    void result(R r, ResultSet rs) throws SQLException;
 
 }

@@ -70,7 +70,7 @@ class AbstractStatement<P> {
         paramsClass = (Class<?>) types[0];
 
         paramsCtor = Arrays.asList(paramsClass.getDeclaredConstructors()).stream()
-                .filter(ctor -> ctor.getParameterCount() == 0 || (ctor.getParameterCount() == 1 && ctor.getParameterTypes()[0].isInstance(statementOuter)))
+                .filter(ctor -> ctor.getParameterCount() == 0 || ctor.getParameterCount() == 1 && ctor.getParameterTypes()[0].isInstance(statementOuter))
                 .findFirst()
                 .orElse(null);
 
@@ -150,7 +150,7 @@ class AbstractStatement<P> {
             } else if (v instanceof Boolean) {
                 pstmt.setBoolean(idx++, (Boolean) v);
             } else if (v.getClass().isArray()) {
-                com.github.cmcgeemac.norm.Type[] t = f.getAnnotationsByType(com.github.cmcgeemac.norm.Type.class);
+                Type[] t = f.getAnnotationsByType(Type.class);
                 pstmt.setArray(idx++, c.createArrayOf(t[0].value(), (Object[]) v));
             } else {
                 pstmt.setObject(idx++, v);
@@ -207,7 +207,7 @@ class AbstractStatement<P> {
             }
 
             if (f.getType().isArray()) {
-                com.github.cmcgeemac.norm.Type[] t = f.getAnnotationsByType(com.github.cmcgeemac.norm.Type.class);
+                Type[] t = f.getAnnotationsByType(Type.class);
                 if (t == null || t.length != 1) {
                     throw new IllegalArgumentException("Parameters class field " + f.getName() + " is an array and must have a @Type annotation to set the database type of the ARRAY");
                 }
@@ -225,7 +225,7 @@ class AbstractStatement<P> {
         while (m.find()) {
             try {
                 slots.add(paramsClass.getDeclaredField(m.group(1)));
-            } catch (NoSuchFieldException ex) {
+            } catch (NoSuchFieldException ignored) {
                 // This should not happen because an exception would have been thrown above
             }
             sqlStr = m.replaceFirst("?");

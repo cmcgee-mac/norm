@@ -114,7 +114,7 @@ public class NormStatement<P extends NoP, R extends NoR> extends AbstractStateme
 
         resultCtor
                 = Arrays.asList(resultClass.getDeclaredConstructors()).stream()
-                        .filter(ctor -> ctor.getParameterCount() == 0 || (ctor.getParameterCount() == 1 && ctor.getParameterTypes()[0].isInstance(statementOuter)))
+                        .filter(ctor -> ctor.getParameterCount() == 0 || ctor.getParameterCount() == 1 && ctor.getParameterTypes()[0].isInstance(statementOuter))
                         .findFirst()
                         .get();
 
